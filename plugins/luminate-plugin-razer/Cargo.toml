@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+[package]
+name = "luminate-plugin-razer"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+hidapi.workspace = true
+luminate-core.workspace = true
+luminate-plugin-api.workspace = true
+serde.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true

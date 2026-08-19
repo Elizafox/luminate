@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# Keep the Docker/Podman build context small and reproducible. The packaged
+# image build (packaging/Dockerfile -> packaging/install.sh -> cargo build)
+# needs only the source tree, Cargo manifests, and packaging inputs.
+.git
+.gitignore
+.dockerignore
+
+# Rust build output (workspace root and any per-crate target dirs), except
+# the generated .rpm artifact itself, which packaging/rpm/Dockerfile needs
+# to install into the smoke-test image.
+target
+**/target
+!target/generate-rpm
+!target/generate-rpm/*.rpm
+
+# Local tooling / editor state.
+.vscode
+.idea
+*.swp
+
+# Docs are not needed to build the binaries.
+docs

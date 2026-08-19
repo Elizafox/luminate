@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+[package]
+name = "luminate-dbus"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Optional system-bus adapter for Luminate"
+
+[dependencies]
+clap.workspace = true
+libluminate = { path = "../libluminate" }
+luminate-platform.workspace = true
+serde.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+zbus = { workspace = true, optional = true }
+
+[dev-dependencies]
+serde_json.workspace = true
+luminate-platform = { workspace = true, features = ["test-support"] }
+
+[features]
+# Off by default: this adapter requires a D-Bus session (typically present
+# on Linux and some BSDs, not on macOS or Windows), so building it is opt-in
+# rather than assumed for every workspace build.
+dbus = ["dep:zbus"]
+
+[[bin]]
+name = "luminate-dbus"
+path = "src/main.rs"
+required-features = ["dbus"]
+
+[[test]]
+name = "dbus_integration"
+path = "tests/dbus_integration.rs"
+required-features = ["dbus"]
+
+[lints]
+workspace = true

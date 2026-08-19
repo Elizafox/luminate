@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+socket_path = "/tmp/luminated-hue/luminated.sock"
+state_path = "/tmp/luminated-hue/state.json"
+
+[plugin_management]
+activation = "explicit"
+
+[[plugins]]
+path = "/home/elizabeth/dev/luminate/target/debug/libluminate_plugin_philips_hue.so"
+required = true
+
+[plugins.config]
+# Replace both placeholders locally. Never commit a real application key.
+bridge_id = "001788fffe123456"
+application_key = "replace-with-the-local-application-key"
+
+# mDNS discovers the configured bridge through _hue._tcp.local. To route
+# explicitly instead, set mdns = false and uncomment endpoint.
+mdns = true
+# endpoint = "192.0.2.20:443"

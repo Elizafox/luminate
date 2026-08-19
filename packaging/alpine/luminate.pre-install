@@ -1,0 +1,15 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+
+if ! getent group luminate >/dev/null 2>&1; then
+  addgroup -S luminate
+fi
+
+if ! id -u luminated >/dev/null 2>&1; then
+  adduser -S -D -H -h /var/lib/luminated -s /sbin/nologin \
+    -G luminate luminated
+fi
+
+exit 0

@@ -1,0 +1,42 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+set -e
+
+if [ "$1" = "configure" ]; then
+  # Required account/directory setup: these one-shot tools work without a
+  # running init (e.g. in a chroot), so a failure here is a real, fatal
+  # misconfiguration rather than an environment quirk. Do not swallow it.
+  systemd-sysusers /usr/lib/sysusers.d/luminate.conf
+  systemd-tmpfiles --create /usr/lib/tmpfiles.d/luminate.conf
+  if [ -f /usr/lib/sysusers.d/luminate-dbus.conf ]; then
+    systemd-sysusers /usr/lib/sysusers.d/luminate-dbus.conf
+  fi
+  if [ -f /usr/lib/sysusers.d/luminate-http.conf ]; then
+    systemd-sysusers /usr/lib/sysusers.d/luminate-http.conf
+  fi
+  if [ -f /usr/lib/tmpfiles.d/luminate-http.conf ]; then
+    systemd-tmpfiles --create /usr/lib/tmpfiles.d/luminate-http.conf
+  fi
+
+  # udev/systemd interactions only make sense when their daemons are live.
+  # Guard on that so a chroot/container install doesn't spuriously fail, but
+  # surface errors when the daemon really is present.
+  if [ -d /run/udev ]; then
+    udevadm control --reload-rules
+    udevadm trigger
+  fi
+
+  if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload
+    # try-restart is a no-op when the unit isn't active, so this restarts a
+    # running daemon onto the new binary/plugins during an upgrade without
+    # auto-starting a fresh install. Best-effort: a restart hiccup should not
+    # fail the package configure.
+    systemctl try-restart luminated.service || true
+    systemctl try-restart luminate-dbus.service luminate-http.service || true
+  fi
+fi
+
+exit 0

@@ -1,0 +1,310 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+[package]
+name = "luminated"
+version = "0.1.0"
+description = "Luminate RGB lighting control daemon"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+libc.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+ciborium.workspace = true
+toml.workspace = true
+tokio.workspace = true
+futures-util.workspace = true
+luminate-core.workspace = true
+luminate-protocol.workspace = true
+luminate-plugin-api.workspace = true
+luminate-host-supervisor.workspace = true
+luminate-platform.workspace = true
+libloading.workspace = true
+iceoryx2.workspace = true
+uuid.workspace = true
+sha2.workspace = true
+subtle.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+tracing-appender.workspace = true
+
+[features]
+# systemd-logind / elogind suspend-resume integration, forwarded straight to
+# `luminate-platform` (see crates/luminate-platform/src/linux/power/logind.rs),
+# which owns the source itself. On by default for Linux builds --
+# `org.freedesktop.login1` is present on essentially every Linux desktop, and
+# a machine without it degrades to a warning rather than failing. Turn it off
+# for a build that must not link zbus, e.g. a minimal embedded target.
+default = ["logind"]
+logind = ["luminate-platform/logind"]
+
+[dev-dependencies]
+# Re-listed with `test-support` so the crate's tests reach
+# `luminate_platform::test_support`; the plain dependency above stays
+# feature-free, keeping the helpers out of release builds.
+luminate-platform = { workspace = true, features = ["test-support"] }
+
+[lints]
+workspace = true
+
+# Packaging metadata for `cargo deb` / `cargo generate-rpm`. These package
+# `packaging/build-stage.sh`'s output (which itself is packaging/install-linux.sh's
+# rendered tree) rather than duplicating path/template rendering here.
+# Run `packaging/build-stage.sh` before either `cargo deb --no-build` or
+# `cargo generate-rpm`. See docs/development/packaging.md.
+[package.metadata.deb]
+name = "luminate"
+maintainer = "Elizabeth Kiara Regina Ashford <elizabeth.jennifer.myers@gmail.com>"
+copyright = "2026, Elizabeth Kiara Regina Ashford"
+extended-description = """\
+Luminate is an RGB lighting control daemon, client library, and CLI, with a \
+plugin system for hardware backends (e.g. Alienware keyboard/AW-ELC)."""
+# systemd provides systemd-sysusers/systemd-tmpfiles/systemctl and udev
+# provides udevadm; the maintainer scripts require both.
+depends = "libudev1, systemd, udev"
+section = "utils"
+priority = "optional"
+maintainer-scripts = "../../packaging/deb"
+conf-files = ["/etc/luminate/luminated.toml"]
+# libluminate.so.28 is shipped explicitly (not just the libluminate.so dev
+# symlink) so the package is self-contained: without it, the versioned
+# SONAME only exists because dpkg's post-install ldconfig trigger happens
+# to recreate it from libluminate.so's baked-in DT_SONAME, which isn't
+# guaranteed (e.g. `dpkg --no-triggers`). See LUMINATE_C_ABI_VERSION in
+# packaging/install-linux.sh and the matching [package.metadata.generate-rpm]
+# comment below.
+assets = [
+  [
+    "../../target/pkgroot/usr/bin/*",
+    "usr/bin/",
+    "755",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/libluminate.so.28",
+    "usr/lib/libluminate.so.28",
+    "755",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/libluminate.so",
+    "usr/lib/libluminate.so",
+    "755",
+  ],
+  [
+    "../../target/pkgroot/usr/include/luminate/luminate.h",
+    "usr/include/luminate/luminate.h",
+    "644",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/luminate/plugins-examples/libluminate_plugin_demo_system.so",
+    "usr/lib/luminate/plugins-examples/libluminate_plugin_demo_system.so",
+    "755",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/luminate/plugins/libluminate_plugin_alienware.so",
+    "usr/lib/luminate/plugins/libluminate_plugin_alienware.so",
+    "755",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/luminate/plugins/libluminate_plugin_lifx.so",
+    "usr/lib/luminate/plugins/libluminate_plugin_lifx.so",
+    "755",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/luminate/plugins/libluminate_plugin_govee.so",
+    "usr/lib/luminate/plugins/libluminate_plugin_govee.so",
+    "755",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/luminate/plugins/libluminate_plugin_linux_leds.so",
+    "usr/lib/luminate/plugins/libluminate_plugin_linux_leds.so",
+    "755",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/luminate/plugins/libluminate_plugin_wled.so",
+    "usr/lib/luminate/plugins/libluminate_plugin_wled.so",
+    "755",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/luminate/plugins/libluminate_plugin_razer.so",
+    "usr/lib/luminate/plugins/libluminate_plugin_razer.so",
+    "755",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/luminate/plugins/libluminate_plugin_philips_hue.so",
+    "usr/lib/luminate/plugins/libluminate_plugin_philips_hue.so",
+    "755",
+  ],
+  [
+    "../../target/pkgroot/etc/luminate/luminated.toml",
+    "etc/luminate/luminated.toml",
+    "644",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/systemd/system/*.service",
+    "usr/lib/systemd/system/",
+    "644",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/sysusers.d/*.conf",
+    "usr/lib/sysusers.d/",
+    "644",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/tmpfiles.d/*.conf",
+    "usr/lib/tmpfiles.d/",
+    "644",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/udev/rules.d/60-luminate-alienware.rules",
+    "usr/lib/udev/rules.d/60-luminate-alienware.rules",
+    "644",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/udev/rules.d/60-luminate-razer.rules",
+    "usr/lib/udev/rules.d/60-luminate-razer.rules",
+    "644",
+  ],
+  [
+    "../../target/pkgroot/usr/lib/udev/rules.d/60-luminate-linux-leds.rules",
+    "usr/lib/udev/rules.d/60-luminate-linux-leds.rules",
+    "644",
+  ],
+  # Not under usr/share/doc/luminate/: debian:bookworm-slim's default
+  # dpkg.cfg.d config does `path-exclude /usr/share/doc/*` (special-casing
+  # only the literal filename `copyright`, which cargo-deb auto-generates
+  # separately), so anything else placed there is silently dropped by dpkg
+  # on that image. usr/share/luminate/ isn't excluded.
+  # Package the staged share tree so optional D-Bus activation/policy and
+  # Polkit files follow the selected install flags too.
+  [
+    "../../target/pkgroot/usr/share/**/*",
+    "usr/share/",
+    "644",
+  ],
+]
+
+# The native package builders select these variants when optional desktop
+# integration is staged. Keep the package name stable while extending the
+# base runtime dependencies; cargo-deb otherwise suffixes variant names.
+[package.metadata.deb.variants.dbus]
+name = "luminate"
+depends = "libudev1, systemd, udev, dbus"
+
+[package.metadata.deb.variants.dbus-polkit]
+name = "luminate"
+depends = "libudev1, systemd, udev, dbus, polkitd"
+
+[package.metadata.generate-rpm]
+name = "luminate"
+summary = "RGB lighting control daemon, client library, and CLI"
+# Paths here assume Fedora's 64-bit multilib layout (%_libdir = /usr/lib64:
+# x86_64, aarch64, ppc64le, s390x, riscv64, ...). packaging/build-rpm.sh
+# stages libluminate.so* and the plugin .so's into pkgroot at whatever
+# SOLIBDIR `rpm --eval '%{_libdir}'` reports, and passes
+# `--variant=lib32` to select the [package.metadata.generate-rpm.variants.lib32]
+# table below instead, on arches (i686, armv7hl, ...) where that's plain
+# /usr/lib. Non-library assets (systemd/sysusers/tmpfiles/udev files) are
+# arch-independent and stay under /usr/lib on every arch; the example config
+# is arch-independent app data and lives under /usr/share regardless.
+assets = [
+  { source = "../../target/pkgroot/usr/bin/*", dest = "/usr/bin/", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib64/libluminate.so.28", dest = "/usr/lib64/libluminate.so.28", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib64/libluminate.so", dest = "/usr/lib64/libluminate.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/include/luminate/luminate.h", dest = "/usr/include/luminate/luminate.h", mode = "644" },
+  { source = "../../target/pkgroot/usr/lib64/luminate/plugins-examples/libluminate_plugin_demo_system.so", dest = "/usr/lib64/luminate/plugins-examples/libluminate_plugin_demo_system.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib64/luminate/plugins/libluminate_plugin_alienware.so", dest = "/usr/lib64/luminate/plugins/libluminate_plugin_alienware.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib64/luminate/plugins/libluminate_plugin_lifx.so", dest = "/usr/lib64/luminate/plugins/libluminate_plugin_lifx.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib64/luminate/plugins/libluminate_plugin_govee.so", dest = "/usr/lib64/luminate/plugins/libluminate_plugin_govee.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib64/luminate/plugins/libluminate_plugin_linux_leds.so", dest = "/usr/lib64/luminate/plugins/libluminate_plugin_linux_leds.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib64/luminate/plugins/libluminate_plugin_wled.so", dest = "/usr/lib64/luminate/plugins/libluminate_plugin_wled.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib64/luminate/plugins/libluminate_plugin_razer.so", dest = "/usr/lib64/luminate/plugins/libluminate_plugin_razer.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib64/luminate/plugins/libluminate_plugin_philips_hue.so", dest = "/usr/lib64/luminate/plugins/libluminate_plugin_philips_hue.so", mode = "755" },
+  { source = "../../target/pkgroot/etc/luminate/luminated.toml", dest = "/etc/luminate/luminated.toml", mode = "644", config = true },
+  { source = "../../target/pkgroot/usr/lib/systemd/system/*.service", dest = "/usr/lib/systemd/system/", mode = "644" },
+  { source = "../../target/pkgroot/usr/lib/sysusers.d/*.conf", dest = "/usr/lib/sysusers.d/", mode = "644" },
+  { source = "../../target/pkgroot/usr/lib/tmpfiles.d/*.conf", dest = "/usr/lib/tmpfiles.d/", mode = "644" },
+  { source = "../../target/pkgroot/usr/lib/udev/rules.d/60-luminate-alienware.rules", dest = "/usr/lib/udev/rules.d/60-luminate-alienware.rules", mode = "644" },
+  { source = "../../target/pkgroot/usr/lib/udev/rules.d/60-luminate-razer.rules", dest = "/usr/lib/udev/rules.d/60-luminate-razer.rules", mode = "644" },
+  { source = "../../target/pkgroot/usr/lib/udev/rules.d/60-luminate-linux-leds.rules", dest = "/usr/lib/udev/rules.d/60-luminate-linux-leds.rules", mode = "644" },
+  # Not usr/share/doc/luminate/, and deliberately not marked `doc = true`:
+  # cargo-generate-rpm (and the `rpm` crate underneath it) has no distinct
+  # `%license` file-flag, only `%doc`, and Fedora's own container images set
+  # `tsflags=nodocs` by default, which silently drops `%doc`-flagged files on
+  # install regardless of path. A real license file should never disappear
+  # that way, so these ship as plain untyped files under usr/share/luminate/
+  # instead -- `rpm -qd` won't list them, but they're never stripped.
+  { source = "../../target/pkgroot/usr/share/**/*", dest = "/usr/share/", mode = "644" },
+]
+post_install_script = """
+systemd-sysusers /usr/lib/sysusers.d/luminate.conf
+systemd-tmpfiles --create /usr/lib/tmpfiles.d/luminate.conf
+[ ! -f /usr/lib/sysusers.d/luminate-dbus.conf ] || systemd-sysusers /usr/lib/sysusers.d/luminate-dbus.conf
+[ ! -f /usr/lib/sysusers.d/luminate-http.conf ] || systemd-sysusers /usr/lib/sysusers.d/luminate-http.conf
+[ ! -f /usr/lib/tmpfiles.d/luminate-http.conf ] || systemd-tmpfiles --create /usr/lib/tmpfiles.d/luminate-http.conf
+udevadm control --reload-rules || true
+udevadm trigger || true
+systemctl daemon-reload || true
+# try-restart is a no-op when the unit isn't active, so this restarts a running
+# daemon onto the new binary/plugins during an upgrade without auto-starting a
+# fresh install.
+systemctl try-restart luminated.service || true
+systemctl try-restart luminate-dbus.service luminate-http.service || true
+"""
+pre_uninstall_script = """
+if [ "$1" = "0" ]; then
+  systemctl stop luminate-dbus.service luminate-http.service luminated.service || true
+fi
+"""
+
+[package.metadata.generate-rpm.requires]
+# systemd-udev provides udevadm; systemd provides systemd-sysusers,
+# systemd-tmpfiles, and systemctl used by the post-install scriptlet.
+systemd-udev = "*"
+systemd = "*"
+
+# cargo-generate-rpm doesn't scan packaged ELFs for DT_SONAME the way real
+# rpmbuild's find-provides does, so the versioned SONAME dependency the
+# binaries pull in (see LUMINATE_C_ABI_VERSION in packaging/install-linux.sh) has
+# to be declared by hand, or the package can never satisfy its own
+# auto-generated `Requires: libluminate.so.28()(64bit)`.
+[package.metadata.generate-rpm.provides]
+"libluminate.so.28()(64bit)" = ""
+
+# Selected via `--variant=lib32` (packaging/build-rpm.sh) on arches whose
+# %_libdir is plain /usr/lib rather than /usr/lib64 (i686, armv7hl, ...).
+# See the comment on the base [package.metadata.generate-rpm] table above.
+[package.metadata.generate-rpm.variants.lib32]
+assets = [
+  { source = "../../target/pkgroot/usr/bin/*", dest = "/usr/bin/", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib/libluminate.so.28", dest = "/usr/lib/libluminate.so.28", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib/libluminate.so", dest = "/usr/lib/libluminate.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/include/luminate/luminate.h", dest = "/usr/include/luminate/luminate.h", mode = "644" },
+  { source = "../../target/pkgroot/usr/lib/luminate/plugins-examples/libluminate_plugin_demo_system.so", dest = "/usr/lib/luminate/plugins-examples/libluminate_plugin_demo_system.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib/luminate/plugins/libluminate_plugin_alienware.so", dest = "/usr/lib/luminate/plugins/libluminate_plugin_alienware.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib/luminate/plugins/libluminate_plugin_lifx.so", dest = "/usr/lib/luminate/plugins/libluminate_plugin_lifx.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib/luminate/plugins/libluminate_plugin_govee.so", dest = "/usr/lib/luminate/plugins/libluminate_plugin_govee.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib/luminate/plugins/libluminate_plugin_linux_leds.so", dest = "/usr/lib/luminate/plugins/libluminate_plugin_linux_leds.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib/luminate/plugins/libluminate_plugin_wled.so", dest = "/usr/lib/luminate/plugins/libluminate_plugin_wled.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib/luminate/plugins/libluminate_plugin_razer.so", dest = "/usr/lib/luminate/plugins/libluminate_plugin_razer.so", mode = "755" },
+  { source = "../../target/pkgroot/usr/lib/luminate/plugins/libluminate_plugin_philips_hue.so", dest = "/usr/lib/luminate/plugins/libluminate_plugin_philips_hue.so", mode = "755" },
+  { source = "../../target/pkgroot/etc/luminate/luminated.toml", dest = "/etc/luminate/luminated.toml", mode = "644", config = true },
+  { source = "../../target/pkgroot/usr/lib/systemd/system/*.service", dest = "/usr/lib/systemd/system/", mode = "644" },
+  { source = "../../target/pkgroot/usr/lib/sysusers.d/*.conf", dest = "/usr/lib/sysusers.d/", mode = "644" },
+  { source = "../../target/pkgroot/usr/lib/tmpfiles.d/*.conf", dest = "/usr/lib/tmpfiles.d/", mode = "644" },
+  { source = "../../target/pkgroot/usr/lib/udev/rules.d/60-luminate-alienware.rules", dest = "/usr/lib/udev/rules.d/60-luminate-alienware.rules", mode = "644" },
+  { source = "../../target/pkgroot/usr/lib/udev/rules.d/60-luminate-razer.rules", dest = "/usr/lib/udev/rules.d/60-luminate-razer.rules", mode = "644" },
+  { source = "../../target/pkgroot/usr/lib/udev/rules.d/60-luminate-linux-leds.rules", dest = "/usr/lib/udev/rules.d/60-luminate-linux-leds.rules", mode = "644" },
+  { source = "../../target/pkgroot/usr/share/**/*", dest = "/usr/share/", mode = "644" },
+]
+
+[package.metadata.generate-rpm.variants.lib32.provides]
+# 32-bit ELF sonames use the bare library name, without the 64-bit ISA marker.
+"libluminate.so.28" = ""

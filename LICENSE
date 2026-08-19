@@ -1,0 +1,41 @@
+# luminate
+
+Copyright (C) 2026 Elizabeth Kiara Regina Ashford
+and the Luminate contributors.
+
+## Licensing
+
+luminate is free software.
+
+The project's licensing is divided by component:
+
+* `luminated/` and all official plugins are licensed under the
+  GNU General Public License v3.0 or later (GPL-3.0-or-later).
+
+* `libluminate/` and the crates compiled into it —
+  `luminate-core/`, `luminate-host-supervisor/`, `luminate-platform/`, and
+  `luminate-protocol/` — are licensed under the GNU Lesser General Public
+  License v3.0 or later (LGPL-3.0-or-later).
+
+* Documentation is licensed under the
+  Creative Commons Attribution-ShareAlike 4.0 International licence
+  (CC-BY-SA-4.0), unless otherwise stated.
+
+The full licence texts are provided in:
+
+    LICENSE-GPLv3
+    LICENSE-LGPLv3
+    LICENSE-CC-BY-SA-4.0
+
+Source files include SPDX licence identifiers indicating the licence
+applicable to that file.
+
+## Contributions
+
+Unless explicitly agreed otherwise, by submitting a contribution you
+certify that you have the right to do so and agree that your
+contribution may be distributed by the luminate project under
+GPL-3.0-or-later or LGPL-3.0-or-later as necessary for inclusion in
+the project's components.
+
+For more information, see CONTRIBUTING.md.

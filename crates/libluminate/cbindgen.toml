@@ -1,0 +1,861 @@
+# SPDX-License-Identifier: LGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+header = """/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford */
+
+#ifndef LUMINATE_H
+#define LUMINATE_H
+
+#if defined(_WIN32) && defined(LUMINATE_SHARED)
+#  if defined(LUMINATE_BUILDING_LIBRARY)
+#    define LUMINATE_API __declspec(dllexport)
+#  else
+#    define LUMINATE_API __declspec(dllimport)
+#  endif
+#elif defined(__GNUC__) || defined(__clang__)
+#  define LUMINATE_API __attribute__((visibility("default")))
+#else
+#  define LUMINATE_API
+#endif
+
+#if defined(__GNUC__) || defined(__clang__)
+/* Prefer the GNU spelling even where a standard `[[nodiscard]]` is also
+ * available: GCC rejects a `[[nodiscard]]` attribute-specifier following the
+ * GNU `__attribute__((visibility(...)))` spelling `LUMINATE_API` expands to
+ * on the preceding line, in strict C23/C++17 mode. Both attributes use the
+ * GNU spelling here, which composes fine. */
+#  define LUMINATE_NODISCARD __attribute__((warn_unused_result))
+#elif defined(__cplusplus) && __cplusplus >= 201703L
+#  define LUMINATE_NODISCARD [[nodiscard]]
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+#  define LUMINATE_NODISCARD [[nodiscard]]
+#else
+#  define LUMINATE_NODISCARD
+#endif
+
+#if defined(__cplusplus) && __cplusplus >= 201402L
+#  define LUMINATE_DEPRECATED(message) [[deprecated(message)]]
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+#  define LUMINATE_DEPRECATED(message) [[deprecated(message)]]
+#elif defined(__GNUC__) || defined(__clang__)
+#  define LUMINATE_DEPRECATED(message) __attribute__((deprecated(message)))
+#else
+#  define LUMINATE_DEPRECATED(message)
+#endif
+
+#ifdef __cplusplus
+#  define LUMINATE_BEGIN_DECLS extern "C" {
+#  define LUMINATE_END_DECLS }
+#  define LUMINATE_STATIC_ASSERT(condition, message) static_assert(condition, message)
+#else
+#  define LUMINATE_BEGIN_DECLS
+#  define LUMINATE_END_DECLS
+#  define LUMINATE_STATIC_ASSERT(condition, message) _Static_assert(condition, message)
+#endif
+
+#define LUMINATE_REQUIRE_C_ABI(version) \\
+    LUMINATE_STATIC_ASSERT((version) == LUMINATE_C_ABI_VERSION, \\
+                           "incompatible libluminate C ABI")"""
+# `cpp_compat` also makes cbindgen wrap its own auto-generated declarations in
+# their own `extern "C"` block (needed so enums get the `: uint32_t` fixed-
+# underlying-type treatment cbindgen only emits under `cpp_compatible_c()`).
+# That nests inside the `LUMINATE_BEGIN_DECLS`/`LUMINATE_END_DECLS` pair below,
+# which additionally has to cover the hand-declared functions in `trailer`
+# that cbindgen can't see through their defining macros. Nested `extern "C"`
+# blocks are valid and harmless, just visually redundant.
+after_includes = "LUMINATE_BEGIN_DECLS"
+trailer = """
+
+/*
+ * Typed C11 accessor API.
+ *
+ * Every pointer below (other than the four `*_snapshot`/`LuminateEvent`
+ * roots and `LuminateEffect`) is a *borrowed view*: it points into memory
+ * owned by the snapshot, state, or event it came from, remains valid only as
+ * long as that owning value has not been freed, and must never be freed on
+ * its own. `LuminateStringView` values borrow the same way. `count`/`at`
+ * pairs follow the same convention throughout: `at` returns null for an
+ * out-of-range index, and accessors on a null input return a zeroed/null/
+ * `UINT32_MAX` sentinel rather than trapping. Passing a non-null pointer that
+ * does not point to the expected type is undefined behaviour.
+ */
+
+/**
+ * One hardware-driven effect a device advertises, borrowed from the owning
+ * `LuminateHardwareEffectsCapability`.
+ */
+typedef struct LuminateHardwareEffectDescriptor LuminateHardwareEffectDescriptor;
+
+/** Which effect variant `LuminateEffect` holds; one of the `LUMINATE_EFFECT_*` values. */
+typedef uint32_t LuminateEffectKind;
+
+/** Sentinel returned by kind/enum accessors when the input pointer is null or otherwise unreadable. */
+#define LUMINATE_DISCRIMINANT_INVALID UINT32_MAX
+
+/* LuminateSurfaceKind: shape of a surface's addressable elements. */
+#define LUMINATE_SURFACE_OPAQUE UINT32_C(0) /**< No addressable internal structure. */
+#define LUMINATE_SURFACE_ZONE UINT32_C(1) /**< A single uniformly-lit zone. */
+#define LUMINATE_SURFACE_LINEAR UINT32_C(2) /**< A 1D strip; see `luminate_surface_linear_length`. */
+#define LUMINATE_SURFACE_SPARSE_2D UINT32_C(3) /**< Irregularly placed 2D points; see `luminate_surface_sparse_size`. */
+#define LUMINATE_SURFACE_MATRIX UINT32_C(4) /**< A dense row/column grid; see `luminate_surface_matrix_size`. */
+
+/* LuminateElementKind: role of one element within a surface. */
+#define LUMINATE_ELEMENT_KEY UINT32_C(0) /**< A keyboard key. */
+#define LUMINATE_ELEMENT_LED UINT32_C(1) /**< A single discrete LED. */
+#define LUMINATE_ELEMENT_ZONE UINT32_C(2) /**< A sub-zone of a surface. */
+#define LUMINATE_ELEMENT_LOGO UINT32_C(3) /**< A logo or badge light. */
+#define LUMINATE_ELEMENT_RING_SEGMENT UINT32_C(4) /**< One segment of a ring light. */
+
+/* LuminateGeometryKind: which field of an element's optional geometry union is populated. */
+#define LUMINATE_GEOMETRY_NONE UINT32_C(0) /**< The element has no geometry. */
+#define LUMINATE_GEOMETRY_RECT UINT32_C(1) /**< See `luminate_element_geometry_rect`. */
+#define LUMINATE_GEOMETRY_POINT UINT32_C(2) /**< See `luminate_element_geometry_point`. */
+#define LUMINATE_GEOMETRY_LINEAR UINT32_C(3) /**< See `luminate_element_geometry_linear`. */
+#define LUMINATE_GEOMETRY_MATRIX_CELL UINT32_C(4) /**< See `luminate_element_geometry_matrix_cell`. */
+
+/* LuminateGroupKind: how a group was created and is managed. */
+#define LUMINATE_GROUP_BUILT_IN UINT32_C(0) /**< Implicit group defined by the daemon. */
+#define LUMINATE_GROUP_TOPOLOGY UINT32_C(1) /**< Derived from device topology. */
+#define LUMINATE_GROUP_DRIVER UINT32_C(2) /**< Declared by a device driver/plugin. */
+#define LUMINATE_GROUP_USER UINT32_C(3) /**< Created by a user. */
+#define LUMINATE_GROUP_APPLICATION UINT32_C(4) /**< Created by a client application. */
+
+/* LuminateGroupMemberKind: what a group member entry refers to. */
+#define LUMINATE_GROUP_MEMBER_SURFACE UINT32_C(0) /**< See `luminate_group_member_surface_id`. */
+#define LUMINATE_GROUP_MEMBER_ELEMENT UINT32_C(1) /**< See `luminate_group_member_surface_id` and `luminate_group_member_element_id`. */
+#define LUMINATE_GROUP_MEMBER_GROUP UINT32_C(2) /**< See `luminate_group_member_group_id`. */
+
+/* LuminateCollectionMemberKind: what a collection member entry refers to. */
+#define LUMINATE_COLLECTION_MEMBER_TARGET UINT32_C(0) /**< See `luminate_collection_member_target`. */
+#define LUMINATE_COLLECTION_MEMBER_COLLECTION UINT32_C(1) /**< See `luminate_collection_member_collection_id`. */
+
+/* LuminateCapabilityScope (brightness): whether brightness can be set independently of colour. */
+#define LUMINATE_CAPABILITY_NONE UINT32_C(0) /**< Brightness is not independently controllable. */
+#define LUMINATE_CAPABILITY_INDEPENDENT UINT32_C(1) /**< Brightness has its own control; see the `luminate_capability_set_brightness_*` accessors. */
+
+/* LuminateCapabilityScope (general): the granularity at which a capability applies. */
+#define LUMINATE_SCOPE_ELEMENT UINT32_C(0) /**< Applies per element. */
+#define LUMINATE_SCOPE_SURFACE UINT32_C(1) /**< Applies per surface. */
+#define LUMINATE_SCOPE_DEVICE UINT32_C(2) /**< Applies per device. */
+#define LUMINATE_SCOPE_CONTROLLER UINT32_C(3) /**< Applies per physical controller (may span devices). */
+
+/* LuminateColourEncoding: how a colour value's channels are interpreted. */
+#define LUMINATE_COLOUR_ENCODING_ADDITIVE UINT32_C(0) /**< Additive RGB-family channels. */
+#define LUMINATE_COLOUR_ENCODING_HSV UINT32_C(1) /**< Hue/saturation/value. */
+#define LUMINATE_COLOUR_ENCODING_HSL UINT32_C(2) /**< Hue/saturation/lightness. */
+#define LUMINATE_COLOUR_ENCODING_CCT UINT32_C(3) /**< Correlated colour temperature. */
+#define LUMINATE_COLOUR_ENCODING_MONOCHROME UINT32_C(4) /**< A single intensity channel. */
+
+/* LuminateColourChannel: identity of one channel within a colour value. */
+#define LUMINATE_COLOUR_CHANNEL_RED UINT32_C(0)
+#define LUMINATE_COLOUR_CHANNEL_GREEN UINT32_C(1)
+#define LUMINATE_COLOUR_CHANNEL_BLUE UINT32_C(2)
+#define LUMINATE_COLOUR_CHANNEL_WHITE UINT32_C(3)
+#define LUMINATE_COLOUR_CHANNEL_WARM_WHITE UINT32_C(4)
+#define LUMINATE_COLOUR_CHANNEL_COOL_WHITE UINT32_C(5)
+#define LUMINATE_COLOUR_CHANNEL_AMBER UINT32_C(6)
+#define LUMINATE_COLOUR_CHANNEL_ULTRAVIOLET UINT32_C(7)
+#define LUMINATE_COLOUR_CHANNEL_HUE UINT32_C(8) /**< HSV/HSL hue. */
+#define LUMINATE_COLOUR_CHANNEL_SATURATION UINT32_C(9) /**< HSV/HSL saturation. */
+#define LUMINATE_COLOUR_CHANNEL_VALUE UINT32_C(10) /**< HSV value. */
+#define LUMINATE_COLOUR_CHANNEL_LIGHTNESS UINT32_C(11) /**< HSL lightness. */
+#define LUMINATE_COLOUR_CHANNEL_TEMPERATURE UINT32_C(12) /**< CCT temperature. */
+#define LUMINATE_COLOUR_CHANNEL_INTENSITY UINT32_C(13) /**< Monochrome intensity. */
+
+/* LuminateFrameUpdateMode: which frame upload styles a target accepts. */
+#define LUMINATE_FRAME_UPDATE_FULL_ONLY UINT32_C(0) /**< Only `luminate_client_upload_frame_full` is accepted. */
+#define LUMINATE_FRAME_UPDATE_PARTIAL UINT32_C(1) /**< Only `luminate_client_upload_frame_partial` is accepted. */
+#define LUMINATE_FRAME_UPDATE_BOTH UINT32_C(2) /**< Both full and partial uploads are accepted. */
+
+/* LuminateBufferingMode: how uploaded frames reach the output. */
+#define LUMINATE_BUFFERING_IMMEDIATE UINT32_C(0) /**< Each upload takes effect immediately. */
+#define LUMINATE_BUFFERING_EXPLICIT_COMMIT UINT32_C(1) /**< Uploads stage until `commit` is set on a frame call. */
+#define LUMINATE_BUFFERING_DOUBLE UINT32_C(2) /**< The daemon double-buffers uploads internally. */
+
+/* LuminateShmPixelFormat: fixed-stride pixel encodings for shared-memory frames. */
+#define LUMINATE_SHM_PIXEL_FORMAT_RGB8 UINT32_C(0) /**< Red, green, blue; 3 bytes per pixel. */
+#define LUMINATE_SHM_PIXEL_FORMAT_RGBW8 UINT32_C(1) /**< Red, green, blue, white; 4 bytes per pixel. */
+#define LUMINATE_SHM_PIXEL_FORMAT_MONO8 UINT32_C(2) /**< Monochrome intensity; 1 byte per pixel. */
+#define LUMINATE_SHM_PIXEL_FORMAT_RGBX8 UINT32_C(3) /**< Red, green, blue, padding; 4 bytes per pixel. */
+
+/* LuminateShmFrameShapeKind: shared-memory pixel-buffer layout. */
+#define LUMINATE_SHM_FRAME_SHAPE_LINEAR UINT32_C(0) /**< A flat plugin-defined pixel order. */
+#define LUMINATE_SHM_FRAME_SHAPE_MATRIX UINT32_C(1) /**< A row-major width-by-height matrix. */
+
+/* LuminatePersistenceKind: what a device retains across power cycles. */
+#define LUMINATE_PERSISTENCE_NONE UINT32_C(0) /**< Nothing is retained. */
+#define LUMINATE_PERSISTENCE_CURRENT_STATE UINT32_C(1) /**< The last-applied state is retained. */
+#define LUMINATE_PERSISTENCE_PROFILES UINT32_C(2) /**< Named profile slots are retained; see `luminate_capability_set_persistence_slots`. */
+
+/* LuminatePersistenceRequirement: whether ordinary operation must write persistent storage. */
+#define LUMINATE_PERSISTENCE_OPTIONAL UINT32_C(0) /**< The device works fully without ever persisting; an explicit save is opt-in convenience. */
+#define LUMINATE_PERSISTENCE_REQUIRED UINT32_C(1) /**< The device always writes state through to non-volatile storage; no explicit save is needed. */
+
+/* LuminateStateReadbackKind: whether the daemon can read state back from the device. */
+#define LUMINATE_STATE_READBACK_NONE UINT32_C(0) /**< State cannot be read back. */
+#define LUMINATE_STATE_READBACK_READABLE UINT32_C(1) /**< One or more facets can be read back; see `luminate_capability_set_readable_facet_at`. */
+
+/* LuminateReadbackFidelity: how much to trust a readback value. */
+#define LUMINATE_READBACK_BEST_EFFORT UINT32_C(0) /**< The value may be approximate or stale. */
+#define LUMINATE_READBACK_EXACT UINT32_C(1) /**< The value exactly reflects hardware state. */
+
+/* LuminateEffectParameterKind: which variant of `LuminateEffectParameter` is populated. */
+#define LUMINATE_EFFECT_PARAMETER_COLOUR UINT32_C(0) /**< See `luminate_effect_parameter_colour_count_range`. */
+#define LUMINATE_EFFECT_PARAMETER_SPEED UINT32_C(1) /**< See `luminate_effect_parameter_speed_range`. */
+#define LUMINATE_EFFECT_PARAMETER_DIRECTION UINT32_C(2) /**< See `luminate_effect_parameter_direction_count`/`_at`. */
+#define LUMINATE_EFFECT_PARAMETER_DURATION UINT32_C(3) /**< See `luminate_effect_parameter_duration_range`. */
+#define LUMINATE_EFFECT_PARAMETER_BRIGHTNESS UINT32_C(4) /**< See `luminate_effect_parameter_brightness_bits`. */
+#define LUMINATE_EFFECT_PARAMETER_CHOICE UINT32_C(5) /**< See `luminate_effect_parameter_choice_count`/`_at`. */
+
+/* LuminateEffectDirection: a motion direction a hardware effect can run in. */
+#define LUMINATE_DIRECTION_FORWARD UINT32_C(0)
+#define LUMINATE_DIRECTION_REVERSE UINT32_C(1)
+#define LUMINATE_DIRECTION_CLOCKWISE UINT32_C(2)
+#define LUMINATE_DIRECTION_COUNTER_CLOCKWISE UINT32_C(3)
+#define LUMINATE_DIRECTION_INWARD UINT32_C(4)
+#define LUMINATE_DIRECTION_OUTWARD UINT32_C(5)
+#define LUMINATE_DIRECTION_RANDOM UINT32_C(6)
+
+/* LuminatePowerDomainKind: what a power domain reference addresses. */
+#define LUMINATE_POWER_DOMAIN_DEVICE UINT32_C(0) /**< The whole device shares one power domain. */
+#define LUMINATE_POWER_DOMAIN_SURFACE UINT32_C(1) /**< A specific surface has its own power domain; see `luminate_power_domain_surface_id`. */
+
+/* LuminateStateFacetKind: an observable/adoptable facet of device state. */
+#define LUMINATE_FACET_APPEARANCE UINT32_C(0) /**< Colour or running effect. */
+#define LUMINATE_FACET_BRIGHTNESS UINT32_C(1)
+#define LUMINATE_FACET_EMISSION UINT32_C(2) /**< Whether light is currently being emitted. */
+#define LUMINATE_FACET_PHYSICAL_POWER UINT32_C(3)
+#define LUMINATE_FACET_EFFECTIVE_APPEARANCE UINT32_C(4) /**< Daemon-synthesized; see `LUMINATE_EFFECTIVE_APPEARANCE_*`. */
+#define LUMINATE_FACET_APPEARANCE_SLOTS UINT32_C(5) /**< Known firmware-stored appearance programs. */
+
+/* LuminateAppearanceSlotUpdatePolicy: completeness rule for one logical mutation. */
+#define LUMINATE_APPEARANCE_SLOT_UPDATE_INDEPENDENT UINT32_C(0)
+#define LUMINATE_APPEARANCE_SLOT_UPDATE_PARTIAL_IF_KNOWN UINT32_C(1)
+#define LUMINATE_APPEARANCE_SLOT_UPDATE_COMPLETE_SET UINT32_C(2)
+
+/* LuminateReachability: whether a device currently responds. */
+#define LUMINATE_REACHABILITY_UNKNOWN UINT32_C(0)
+#define LUMINATE_REACHABILITY_REACHABLE UINT32_C(1)
+#define LUMINATE_REACHABILITY_UNAVAILABLE UINT32_C(2)
+
+/* LuminateReconciliationStatus: progress of reconciling desired state with hardware. */
+#define LUMINATE_RECONCILIATION_IDLE UINT32_C(0) /**< No reconciliation in progress or needed. */
+#define LUMINATE_RECONCILIATION_RECONCILING UINT32_C(1) /**< Actively applying state to hardware. */
+#define LUMINATE_RECONCILIATION_COMPLETE UINT32_C(2) /**< Hardware matches desired state. */
+#define LUMINATE_RECONCILIATION_DRIFTED UINT32_C(3) /**< Hardware state has diverged from what was last applied. */
+#define LUMINATE_RECONCILIATION_FAILED UINT32_C(4) /**< The last reconciliation attempt failed. */
+
+/* LuminateObservationConfidence: how strongly an observation is supported. */
+#define LUMINATE_CONFIDENCE_ASSUMED UINT32_C(0) /**< Projected from a successful write but not read back. */
+#define LUMINATE_CONFIDENCE_BEST_EFFORT UINT32_C(1) /**< Readback or derivation whose fidelity is insufficient to treat as exact. */
+#define LUMINATE_CONFIDENCE_CONFIRMED UINT32_C(2) /**< Exact hardware readback, or a sound derivation from confirmed inputs. */
+
+/* LuminateObservationSource: where an observation's value came from. */
+#define LUMINATE_SOURCE_SUCCESSFUL_APPLY UINT32_C(0) /**< Recorded after a mutation succeeded. */
+#define LUMINATE_SOURCE_READBACK UINT32_C(1) /**< Read directly from hardware. */
+#define LUMINATE_SOURCE_DERIVED UINT32_C(2) /**< Computed from other known state. */
+#define LUMINATE_SOURCE_ADOPTED_BASELINE UINT32_C(3) /**< Taken from an adopted pre-existing baseline. */
+
+/* LuminateAdoptionStatus: whether a facet's pre-existing hardware state was adopted as the baseline. */
+#define LUMINATE_ADOPTION_NOT_APPLICABLE UINT32_C(0) /**< Adoption does not apply to this facet. */
+#define LUMINATE_ADOPTION_PENDING UINT32_C(1) /**< Eligible adoption has not yet become durable. */
+#define LUMINATE_ADOPTION_DURABLE UINT32_C(2) /**< Adopted and persisted. */
+#define LUMINATE_ADOPTION_INELIGIBLE_FIDELITY UINT32_C(3) /**< Readback fidelity was too low to adopt. */
+#define LUMINATE_ADOPTION_PERSISTENCE_FAILED UINT32_C(4) /**< Adoption was attempted but persisting it failed. */
+
+/* LuminateTargetKind: which addressing level a `LuminateTargetView` names. */
+#define LUMINATE_TARGET_DEVICE UINT32_C(0)
+#define LUMINATE_TARGET_SURFACE UINT32_C(1)
+#define LUMINATE_TARGET_ELEMENT UINT32_C(2)
+#define LUMINATE_TARGET_GROUP UINT32_C(3)
+
+/* LuminateAppearanceKind: which variant of a facet's appearance value is populated. */
+#define LUMINATE_APPEARANCE_STATIC UINT32_C(0) /**< See `luminate_facet_value_colour`. */
+#define LUMINATE_APPEARANCE_EFFECT UINT32_C(1) /**< See `luminate_facet_value_effect`. */
+#define LUMINATE_APPEARANCE_MIXED UINT32_C(2) /**< Constituents have different configured appearances. */
+
+/* LuminateEffectiveAppearanceKind: which variant of a facet's effective-appearance value is populated. */
+#define LUMINATE_EFFECTIVE_APPEARANCE_OFF UINT32_C(0) /**< The target is not currently emitting light. */
+#define LUMINATE_EFFECTIVE_APPEARANCE_STATIC UINT32_C(1) /**< See `luminate_facet_value_colour`. */
+#define LUMINATE_EFFECTIVE_APPEARANCE_EFFECT UINT32_C(2) /**< See `luminate_facet_value_effect`. */
+#define LUMINATE_EFFECTIVE_APPEARANCE_STREAMING UINT32_C(3) /**< A client is actively pushing raw frames to this target; no colour or effect is populated. */
+#define LUMINATE_EFFECTIVE_APPEARANCE_MIXED UINT32_C(4) /**< Constituents have different effective appearances. */
+
+/* LuminateEmissionState: whether a target is currently emitting light. */
+#define LUMINATE_EMISSION_DARK UINT32_C(0)
+#define LUMINATE_EMISSION_EMITTING UINT32_C(1)
+
+/* LuminatePhysicalPowerState: whether a target's physical power is on. */
+#define LUMINATE_PHYSICAL_POWER_OFF UINT32_C(0)
+#define LUMINATE_PHYSICAL_POWER_ON UINT32_C(1)
+
+/* LuminateEffectKind: which effect variant a `LuminateEffect` holds. */
+#define LUMINATE_EFFECT_OFF UINT32_C(0) /**< No effect; target is dark. */
+#define LUMINATE_EFFECT_STATIC UINT32_C(1) /**< A fixed colour, no animation. */
+#define LUMINATE_EFFECT_BREATHE UINT32_C(2) /**< Smooth fade in/out of one colour. */
+#define LUMINATE_EFFECT_PULSE UINT32_C(3) /**< Sharp pulse of one colour. */
+#define LUMINATE_EFFECT_SCANNER UINT32_C(4) /**< A moving point of light (Larson scanner style). */
+#define LUMINATE_EFFECT_MORPH UINT32_C(5) /**< Cycles/blends through a list of colours. */
+#define LUMINATE_EFFECT_SPECTRUM UINT32_C(6) /**< Cycles through the full colour spectrum. */
+#define LUMINATE_EFFECT_RAINBOW UINT32_C(7) /**< A static or scrolling rainbow gradient. */
+#define LUMINATE_EFFECT_HARDWARE UINT32_C(8) /**< A device-native effect selected by id; see `luminate_effect_create_hardware`. */
+#define LUMINATE_EFFECT_STROBE UINT32_C(9) /**< Rapid on/off flashing of one colour. */
+
+/* LuminateEventKind: which payload a `LuminateEvent` carries. */
+#define LUMINATE_EVENT_TOPOLOGY_CHANGED UINT32_C(0) /**< Devices were added/removed/changed; see `luminate_event_topology_device_at`. */
+#define LUMINATE_EVENT_STATE_CHANGED UINT32_C(1) /**< One or more devices' state changed; see `luminate_event_state_device_at`. */
+#define LUMINATE_EVENT_SHM_STREAM_ENDED UINT32_C(2) /**< A client-published shared-memory frame stream ended on the daemon side; see `luminate_event_shm_stream_target`. */
+#define LUMINATE_EVENT_CONFIGURATION_CHANGED UINT32_C(3) /**< Managed configuration changed; see `luminate_event_configuration_changes`. */
+#define LUMINATE_EVENT_SCENES_CHANGED UINT32_C(4) /**< The persistent scene registry changed. */
+#define LUMINATE_EVENT_TRANSITIONS_CHANGED UINT32_C(5) /**< One or more daemon-managed transition statuses changed. */
+#define LUMINATE_EVENT_RESYNC_REQUIRED UINT32_C(6) /**< Events were lost; fetch every authoritative baseline again. */
+
+#define LUMINATE_TRANSITION_FUNCTION_LINEAR UINT32_C(0)
+#define LUMINATE_TRANSITION_FUNCTION_EASE_IN UINT32_C(1)
+#define LUMINATE_TRANSITION_FUNCTION_EASE_OUT UINT32_C(2)
+#define LUMINATE_TRANSITION_FUNCTION_EASE_IN_OUT UINT32_C(3)
+
+#define LUMINATE_TRANSITION_COLOUR_ENCODED UINT32_C(0)
+#define LUMINATE_TRANSITION_COLOUR_OKLAB UINT32_C(1)
+
+#define LUMINATE_HUE_DIRECTION_SHORTEST UINT32_C(0)
+#define LUMINATE_HUE_DIRECTION_INCREASING UINT32_C(1)
+#define LUMINATE_HUE_DIRECTION_DECREASING UINT32_C(2)
+
+/* LuminatePolicyOperation: a semantic operation evaluated by an access policy. */
+#define LUMINATE_POLICY_OP_OBSERVE UINT32_C(0) /**< Observe topology, state, or events. */
+#define LUMINATE_POLICY_OP_REFRESH UINT32_C(1) /**< Refresh state from hardware. */
+#define LUMINATE_POLICY_OP_CONTROL UINT32_C(2) /**< Control device state. */
+#define LUMINATE_POLICY_OP_HARDWARE_ADMINISTRATION UINT32_C(3) /**< Change hardware-level configuration. */
+#define LUMINATE_POLICY_OP_DAEMON_ADMINISTRATION UINT32_C(4) /**< Administer the daemon. */
+#define LUMINATE_POLICY_OP_MANAGE_PLUGINS UINT32_C(5) /**< Manage plugins and their configuration. */
+#define LUMINATE_POLICY_OP_CREATE_COLLECTION UINT32_C(6) /**< Create a collection. */
+#define LUMINATE_POLICY_OP_DESTROY_COLLECTION UINT32_C(7) /**< Destroy a collection. */
+#define LUMINATE_POLICY_OP_MODIFY_COLLECTION UINT32_C(8) /**< Change collection membership. */
+#define LUMINATE_POLICY_OP_ADMINISTER_COLLECTIONS UINT32_C(9) /**< Administer a collection without owning it. */
+#define LUMINATE_POLICY_OP_MANAGE_POLICY UINT32_C(10) /**< Read or replace the remote access policy. */
+#define LUMINATE_POLICY_OP_MANAGE_AUTHENTICATION UINT32_C(11) /**< Manage front-end authentication records. */
+#define LUMINATE_POLICY_OP_ADMINISTER_FRONTEND UINT32_C(12) /**< Administer front-end operations for non-daemon policy checks. */
+#define LUMINATE_POLICY_OP_CREATE_SCENE UINT32_C(13) /**< Create a persistent scene. */
+#define LUMINATE_POLICY_OP_MODIFY_SCENE UINT32_C(14) /**< Replace or recapture a scene. */
+#define LUMINATE_POLICY_OP_DESTROY_SCENE UINT32_C(15) /**< Delete a scene. */
+#define LUMINATE_POLICY_OP_ADMINISTER_SCENES UINT32_C(16) /**< Administer a scene without owning it. */
+
+/* LuminateRuleEffect: whether a matching policy rule allows or denies. */
+#define LUMINATE_RULE_EFFECT_ALLOW UINT32_C(0)
+#define LUMINATE_RULE_EFFECT_DENY UINT32_C(1)
+
+/* LuminatePolicyCallMode: whether a policy provider's callbacks return synchronously or complete later via a completion token. */
+#define LUMINATE_POLICY_CALL_MODE_SYNC UINT32_C(0)
+#define LUMINATE_POLICY_CALL_MODE_ASYNC UINT32_C(1)
+
+/** Releases a `LuminateTopologySnapshot` returned by `luminate_client_list_devices` or a baseline subscribe call. Null is a no-op. */
+LUMINATE_API void luminate_topology_snapshot_free(LuminateTopologySnapshot *value);
+/** Releases a `LuminateWithdrawnDeviceList` returned by `luminate_client_list_withdrawn_devices`. Null is a no-op. */
+LUMINATE_API void luminate_withdrawn_device_list_free(LuminateWithdrawnDeviceList *value);
+/** Releases a `LuminateDeviceSnapshot` returned by `luminate_client_get_device`. Null is a no-op. */
+LUMINATE_API void luminate_device_snapshot_free(LuminateDeviceSnapshot *value);
+/** Releases a `LuminateStateSnapshot` returned by `luminate_client_get_state`. Null is a no-op. */
+LUMINATE_API void luminate_state_snapshot_free(LuminateStateSnapshot *value);
+LUMINATE_API void luminate_collection_state_snapshot_free(LuminateCollectionStateSnapshot *value);
+/** Releases a `LuminateEvent` returned by `luminate_event_subscription_next`. Null is a no-op. */
+LUMINATE_API void luminate_event_free(LuminateEvent *value);
+/** Releases a `LuminateCollectionList` returned by `luminate_client_list_collections`. Null is a no-op. */
+LUMINATE_API void luminate_collection_list_free(LuminateCollectionList *value);
+/** Releases a `LuminateCollectionSnapshot` returned by `luminate_client_get_collection`. Null is a no-op. */
+LUMINATE_API void luminate_collection_snapshot_free(LuminateCollectionSnapshot *value);
+/** Releases a scene list. Null is a no-op. */
+LUMINATE_API void luminate_scene_list_free(LuminateSceneList *value);
+/** Releases a scene snapshot. Null is a no-op. */
+LUMINATE_API void luminate_scene_snapshot_free(LuminateSceneSnapshot *value);
+/** Releases a `LuminateAllOffPlan` returned by `luminate_all_off_plan`. Null is a no-op. */
+LUMINATE_API void luminate_all_off_plan_free(LuminateAllOffPlan *value);
+/** The collection's stable, server-generated identifier. */
+LUMINATE_API LuminateStringView luminate_collection_id(const LuminateCollection *value);
+/** The collection's human-readable display name. */
+LUMINATE_API LuminateStringView luminate_collection_name(const LuminateCollection *value);
+/** Number of members explicitly listed in the collection. */
+LUMINATE_API uintptr_t luminate_collection_member_count(const LuminateCollection *value);
+/** Borrowed member at `index`, or null if out of range. */
+LUMINATE_API const LuminateCollectionMember *luminate_collection_member_at(const LuminateCollection *value, uintptr_t index);
+/** The scene's stable identifier. */
+LUMINATE_API LuminateStringView luminate_scene_id(const LuminateScene *value);
+/** The scene's human-readable name. */
+LUMINATE_API LuminateStringView luminate_scene_name(const LuminateScene *value);
+/** Number of ordered bindings in the scene. */
+LUMINATE_API uintptr_t luminate_scene_binding_count(const LuminateScene *value);
+/** Borrowed binding at `index`, or null if out of range. */
+LUMINATE_API const LuminateSceneBinding *luminate_scene_binding_at(const LuminateScene *value, uintptr_t index);
+
+/** Number of surfaces on a device. */
+LUMINATE_API uintptr_t luminate_device_surface_count(const LuminateDevice *value);
+/** Borrowed surface at `index`, or null if out of range. */
+LUMINATE_API const LuminateSurface *luminate_device_surface_at(const LuminateDevice *value, uintptr_t index);
+/** Number of groups a device belongs to. */
+LUMINATE_API uintptr_t luminate_device_group_count(const LuminateDevice *value);
+/** Borrowed group at `index`, or null if out of range. */
+LUMINATE_API const LuminateGroup *luminate_device_group_at(const LuminateDevice *value, uintptr_t index);
+/** The device's stable identifier. */
+LUMINATE_API LuminateStringView luminate_device_id(const LuminateDevice *value);
+/** The device's human-readable display name. */
+LUMINATE_API LuminateStringView luminate_device_name(const LuminateDevice *value);
+/** Number of physical-form tags attached to the device. */
+LUMINATE_API uintptr_t luminate_device_physical_tag_count(const LuminateDevice *value);
+/** Physical-form tag at `index`, or an absent view if out of range. */
+LUMINATE_API LuminateStringView luminate_device_physical_tag_at(const LuminateDevice *value, uintptr_t index);
+/** Number of informational notes attached to the device. */
+LUMINATE_API uintptr_t luminate_device_note_count(const LuminateDevice *value);
+/** Note text at `index`, or an empty view if out of range. */
+LUMINATE_API LuminateStringView luminate_device_note_at(const LuminateDevice *value, uintptr_t index);
+/** Number of warnings attached to the device. */
+LUMINATE_API uintptr_t luminate_device_warning_count(const LuminateDevice *value);
+/** Warning text at `index`, or an empty view if out of range. */
+LUMINATE_API LuminateStringView luminate_device_warning_at(const LuminateDevice *value, uintptr_t index);
+
+/** The surface's identifier, unique within its owning device. */
+LUMINATE_API LuminateStringView luminate_surface_id(const LuminateSurface *value);
+/** The surface's human-readable display name. */
+LUMINATE_API LuminateStringView luminate_surface_name(const LuminateSurface *value);
+/** Number of elements on this surface. */
+LUMINATE_API uintptr_t luminate_surface_element_count(const LuminateSurface *value);
+/** Borrowed element at `index`, or null if out of range. */
+LUMINATE_API const LuminateElement *luminate_surface_element_at(const LuminateSurface *value, uintptr_t index);
+/** Number of physical-form tags attached to the surface. */
+LUMINATE_API uintptr_t luminate_surface_physical_tag_count(const LuminateSurface *value);
+/** Physical-form tag at `index`, or an absent view if out of range. */
+LUMINATE_API LuminateStringView luminate_surface_physical_tag_at(const LuminateSurface *value, uintptr_t index);
+/** Number of informational notes attached to the surface. */
+LUMINATE_API uintptr_t luminate_surface_note_count(const LuminateSurface *value);
+/** Note text at `index`, or an empty view if out of range. */
+LUMINATE_API LuminateStringView luminate_surface_note_at(const LuminateSurface *value, uintptr_t index);
+/** Number of warnings attached to the surface. */
+LUMINATE_API uintptr_t luminate_surface_warning_count(const LuminateSurface *value);
+/** Warning text at `index`, or an empty view if out of range. */
+LUMINATE_API LuminateStringView luminate_surface_warning_at(const LuminateSurface *value, uintptr_t index);
+
+/** The element's identifier, unique within its owning surface. */
+LUMINATE_API LuminateStringView luminate_element_id(const LuminateElement *value);
+/** Number of physical-form tags attached to the element. */
+LUMINATE_API uintptr_t luminate_element_physical_tag_count(const LuminateElement *value);
+/** Physical-form tag at `index`, or an absent view if out of range. */
+LUMINATE_API LuminateStringView luminate_element_physical_tag_at(const LuminateElement *value, uintptr_t index);
+/** Number of informational notes attached to the element. */
+LUMINATE_API uintptr_t luminate_element_note_count(const LuminateElement *value);
+/** Note text at `index`, or an empty view if out of range. */
+LUMINATE_API LuminateStringView luminate_element_note_at(const LuminateElement *value, uintptr_t index);
+/** Number of warnings attached to the element. */
+LUMINATE_API uintptr_t luminate_element_warning_count(const LuminateElement *value);
+/** Warning text at `index`, or an empty view if out of range. */
+LUMINATE_API LuminateStringView luminate_element_warning_at(const LuminateElement *value, uintptr_t index);
+
+/** The group's identifier, unique within its owning device. */
+LUMINATE_API LuminateStringView luminate_group_id(const LuminateGroup *value);
+/** The group's human-readable display name. */
+LUMINATE_API LuminateStringView luminate_group_name(const LuminateGroup *value);
+/** Number of members in the group. */
+LUMINATE_API uintptr_t luminate_group_member_count(const LuminateGroup *value);
+/** Borrowed member at `index`, or null if out of range. */
+LUMINATE_API const LuminateGroupMember *luminate_group_member_at(const LuminateGroup *value, uintptr_t index);
+/** Number of informational notes attached to the group. */
+LUMINATE_API uintptr_t luminate_group_note_count(const LuminateGroup *value);
+/** Note text at `index`, or an empty view if out of range. */
+LUMINATE_API LuminateStringView luminate_group_note_at(const LuminateGroup *value, uintptr_t index);
+/** Number of warnings attached to the group. */
+LUMINATE_API uintptr_t luminate_group_warning_count(const LuminateGroup *value);
+/** Warning text at `index`, or an empty view if out of range. */
+LUMINATE_API LuminateStringView luminate_group_warning_at(const LuminateGroup *value, uintptr_t index);
+
+/** Number of colour capabilities advertised. */
+LUMINATE_API uintptr_t luminate_capability_set_colour_count(const LuminateCapabilitySet *value);
+/** Borrowed colour capability at `index`, or null if out of range. */
+LUMINATE_API const LuminateColourCapability *luminate_capability_set_colour_at(const LuminateCapabilitySet *value, uintptr_t index);
+/** Number of channels within a colour capability. */
+LUMINATE_API uintptr_t luminate_colour_capability_channel_count(const LuminateColourCapability *value);
+/** Borrowed channel capability at `index`, or null if out of range. */
+LUMINATE_API const LuminateColourChannelCapability *luminate_colour_capability_channel_at(const LuminateColourCapability *value, uintptr_t index);
+/** Number of hardware effects advertised by a hardware-effects capability. */
+LUMINATE_API uintptr_t luminate_hardware_effects_effect_count(const LuminateHardwareEffectsCapability *value);
+/** Borrowed hardware effect descriptor at `index`, or null if out of range. */
+LUMINATE_API const LuminateHardwareEffectDescriptor *luminate_hardware_effects_effect_at(const LuminateHardwareEffectsCapability *value, uintptr_t index);
+
+/** Number of appearance slots advertised. */
+LUMINATE_API uintptr_t luminate_appearance_slot_count(const LuminateAppearanceSlotsCapability *value);
+/** Borrowed appearance-slot descriptor at `index`, or null. */
+LUMINATE_API const LuminateAppearanceSlotDescriptor *luminate_appearance_slot_at(const LuminateAppearanceSlotsCapability *value, uintptr_t index);
+/** Stable identifier of an appearance slot. */
+LUMINATE_API LuminateStringView luminate_appearance_slot_id(const LuminateAppearanceSlotDescriptor *value);
+/** Human-readable name of an appearance slot. */
+LUMINATE_API LuminateStringView luminate_appearance_slot_name(const LuminateAppearanceSlotDescriptor *value);
+/** Number of informational notes attached to an appearance slot. */
+LUMINATE_API uintptr_t luminate_appearance_slot_note_count(const LuminateAppearanceSlotDescriptor *value);
+/** Informational note at `index`, or an empty view. */
+LUMINATE_API LuminateStringView luminate_appearance_slot_note_at(const LuminateAppearanceSlotDescriptor *value, uintptr_t index);
+/** Number of warnings attached to an appearance slot. */
+LUMINATE_API uintptr_t luminate_appearance_slot_warning_count(const LuminateAppearanceSlotDescriptor *value);
+/** Warning at `index`, or an empty view. */
+LUMINATE_API LuminateStringView luminate_appearance_slot_warning_at(const LuminateAppearanceSlotDescriptor *value, uintptr_t index);
+/** Number of colour models accepted by a slot appearance. */
+LUMINATE_API uintptr_t luminate_appearance_capability_colour_count(const LuminateAppearanceCapability *value);
+/** Borrowed colour capability at `index`, or null. */
+LUMINATE_API const LuminateColourCapability *luminate_appearance_capability_colour_at(const LuminateAppearanceCapability *value, uintptr_t index);
+/** The hardware effect's stable identifier, passed to `luminate_effect_create_hardware`. */
+LUMINATE_API LuminateStringView luminate_hardware_effect_descriptor_id(const LuminateHardwareEffectDescriptor *value);
+/** The hardware effect's human-readable display name. */
+LUMINATE_API LuminateStringView luminate_hardware_effect_descriptor_name(const LuminateHardwareEffectDescriptor *value);
+/** Number of configurable parameters the hardware effect exposes. */
+LUMINATE_API uintptr_t luminate_hardware_effect_descriptor_parameter_count(const LuminateHardwareEffectDescriptor *value);
+/** Borrowed parameter descriptor at `index`, or null if out of range. */
+LUMINATE_API const LuminateEffectParameter *luminate_hardware_effect_descriptor_parameter_at(const LuminateHardwareEffectDescriptor *value, uintptr_t index);
+
+/** The device id this state snapshot belongs to. */
+LUMINATE_API LuminateStringView luminate_state_device_id(const LuminateState *value);
+/** Number of facet observations recorded for the device. */
+LUMINATE_API uintptr_t luminate_state_observation_count(const LuminateState *value);
+/** Borrowed observation at `index`, or null if out of range. */
+LUMINATE_API const LuminateFacetObservation *luminate_state_observation_at(const LuminateState *value, uintptr_t index);
+/** Number of facet adoption records for the device. */
+LUMINATE_API uintptr_t luminate_state_adoption_count(const LuminateState *value);
+/** Borrowed adoption record at `index`, or null if out of range. */
+LUMINATE_API const LuminateAdoption *luminate_state_adoption_at(const LuminateState *value, uintptr_t index);
+/** Number of channel values in a colour. */
+LUMINATE_API uintptr_t luminate_colour_channel_count(const LuminateColour *value);
+/**
+ * Copies the channel and raw value at `index` into caller-owned outputs.
+ *
+ * Returns false for a null colour, null output, or out-of-range index. Both
+ * outputs remain unchanged on failure.
+ */
+LUMINATE_API bool luminate_colour_channel_at(const LuminateColour *value, uintptr_t index, LuminateColourChannel *out_channel, uint32_t *out_value);
+
+/** Which effect variant this owned effect holds, or `LUMINATE_DISCRIMINANT_INVALID`. */
+LUMINATE_API LuminateEffectKind luminate_effect_kind(const LuminateEffect *effect);
+/** Copies an RGB-only animated effect's colour into `out_colour`. */
+LUMINATE_API bool luminate_effect_rgb(const LuminateEffect *effect, LuminateRgb *out_colour);
+/** Borrowed generic colour, or null unless this is a static effect. */
+LUMINATE_API const LuminateColour *luminate_effect_static_colour(const LuminateEffect *effect);
+/** Copies an animated effect's period into `out_period_ms`. */
+LUMINATE_API bool luminate_effect_period_ms(const LuminateEffect *effect, uint32_t *out_period_ms);
+/** Number of RGB colours in a morph or hardware effect. */
+LUMINATE_API uintptr_t luminate_effect_rgb_count(const LuminateEffect *effect);
+/** Copies the RGB colour at `index` into `out_colour`. */
+LUMINATE_API bool luminate_effect_rgb_at(const LuminateEffect *effect, uintptr_t index, LuminateRgb *out_colour);
+/** Hardware effect identifier, or an absent view. */
+LUMINATE_API LuminateStringView luminate_effect_hardware_id(const LuminateEffect *effect);
+/** Copies the optional hardware speed into `out_speed`. */
+LUMINATE_API bool luminate_effect_speed(const LuminateEffect *effect, uint16_t *out_speed);
+/** Copies the optional hardware duration into `out_duration_ms`. */
+LUMINATE_API bool luminate_effect_duration_ms(const LuminateEffect *effect, uint32_t *out_duration_ms);
+/** Copies the optional hardware brightness into `out_brightness`. */
+LUMINATE_API bool luminate_effect_brightness(const LuminateEffect *effect, uint32_t *out_brightness);
+/** Optional hardware direction, or `LUMINATE_DISCRIMINANT_INVALID`. */
+LUMINATE_API LuminateEffectDirection luminate_effect_direction(const LuminateEffect *effect);
+/** Optional hardware choice, or an absent view. */
+LUMINATE_API LuminateStringView luminate_effect_choice(const LuminateEffect *effect);
+
+/** Which effect variant this borrowed view holds, or `LUMINATE_DISCRIMINANT_INVALID`. */
+LUMINATE_API LuminateEffectKind luminate_effect_view_kind(const LuminateEffectView *effect);
+/** Copies an RGB-only animated effect view's colour into `out_colour`. */
+LUMINATE_API bool luminate_effect_view_rgb(const LuminateEffectView *effect, LuminateRgb *out_colour);
+/** Borrowed generic colour, or null unless this is a static effect view. */
+LUMINATE_API const LuminateColour *luminate_effect_view_static_colour(const LuminateEffectView *effect);
+/** Copies an animated effect view's period into `out_period_ms`. */
+LUMINATE_API bool luminate_effect_view_period_ms(const LuminateEffectView *effect, uint32_t *out_period_ms);
+/** Number of RGB colours in a morph or hardware effect view. */
+LUMINATE_API uintptr_t luminate_effect_view_rgb_count(const LuminateEffectView *effect);
+/** Copies the RGB colour at `index` from an effect view into `out_colour`. */
+LUMINATE_API bool luminate_effect_view_rgb_at(const LuminateEffectView *effect, uintptr_t index, LuminateRgb *out_colour);
+/** Hardware effect-view identifier, or an absent view. */
+LUMINATE_API LuminateStringView luminate_effect_view_hardware_id(const LuminateEffectView *effect);
+/** Copies the optional hardware effect-view speed into `out_speed`. */
+LUMINATE_API bool luminate_effect_view_speed(const LuminateEffectView *effect, uint16_t *out_speed);
+/** Copies the optional hardware effect-view duration into `out_duration_ms`. */
+LUMINATE_API bool luminate_effect_view_duration_ms(const LuminateEffectView *effect, uint32_t *out_duration_ms);
+/** Copies the optional hardware effect-view brightness into `out_brightness`. */
+LUMINATE_API bool luminate_effect_view_brightness(const LuminateEffectView *effect, uint32_t *out_brightness);
+/** Optional hardware effect-view direction, or `LUMINATE_DISCRIMINANT_INVALID`. */
+LUMINATE_API LuminateEffectDirection luminate_effect_view_direction(const LuminateEffectView *effect);
+/** Optional hardware effect-view choice, or an absent view. */
+LUMINATE_API LuminateStringView luminate_effect_view_choice(const LuminateEffectView *effect);
+/** Creates an owned breathe effect. Release with `luminate_effect_free`. */
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_effect_create_breathe(LuminateRgb colour, uint32_t period_ms, LuminateEffect **out_effect);
+/** Creates an owned pulse effect. Release with `luminate_effect_free`. */
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_effect_create_pulse(LuminateRgb colour, uint32_t period_ms, LuminateEffect **out_effect);
+/** Creates an owned strobe effect. Release with `luminate_effect_free`. */
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_effect_create_strobe(LuminateRgb colour, uint32_t period_ms, LuminateEffect **out_effect);
+/** Creates an owned scanner effect. Release with `luminate_effect_free`. */
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_effect_create_scanner(LuminateRgb colour, uint32_t period_ms, LuminateEffect **out_effect);
+/** Sets the speed parameter on a hardware effect created by `luminate_effect_create_hardware`. */
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_effect_hardware_set_speed(LuminateEffect *effect, uint16_t speed);
+/** Sets the duration-in-milliseconds parameter on a hardware effect created by `luminate_effect_create_hardware`. */
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_effect_hardware_set_duration_ms(LuminateEffect *effect, uint32_t duration_ms);
+/** Sets the brightness parameter on a hardware effect created by `luminate_effect_create_hardware`. */
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_effect_hardware_set_brightness(LuminateEffect *effect, uint32_t brightness);
+/** The choice option's stable identifier. */
+LUMINATE_API LuminateStringView luminate_effect_choice_id(const LuminateEffectChoice *value);
+/** The choice option's human-readable display name. */
+LUMINATE_API LuminateStringView luminate_effect_choice_name(const LuminateEffectChoice *value);
+
+/**
+ * Sets brightness on the given target, in the raw units of its advertised
+ * brightness capability (0 to `luminate_capability_set_brightness_maximum`,
+ * not a 0-100 percentage).
+ */
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_client_set_brightness(LuminateClient *client, const LuminateTarget *target, uint32_t value);
+/** Clears any desired-state override for the given target, returning it to its default. */
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_client_clear_target(LuminateClient *client, const LuminateTarget *target);
+/** Turns off (dark) the given target. */
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_client_set_off(LuminateClient *client, const LuminateTarget *target);
+/** Reapplies the given target's last-known configured appearance. */
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_client_restore_appearance(LuminateClient *client, const LuminateTarget *target);
+/** Sets whether the given target emits light. */
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_client_set_emission(LuminateClient *client, const LuminateTarget *target, LuminateEmissionState state);
+
+/** Adds one member to a collection's explicit membership. A no-op if `member` is already present. */
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_client_add_collection_member(LuminateClient *client, const char *id, const LuminateCollectionMemberInput *member);
+/** Removes one member from a collection's explicit membership. A no-op if `member` is absent. */
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_client_remove_collection_member(LuminateClient *client, const char *id, const LuminateCollectionMemberInput *member);
+
+/*
+ * `null_safe_free!`-generated release functions for the multi-principal
+ * authorization façade's opaque handles (`policy.rs`, `multi_user/`,
+ * `streams.rs`, `policy_provider.rs`, `ownership_store.rs`): invisible to
+ * cbindgen for the same reason as the `luminate_topology_snapshot_free` and
+ * friends above, hand-declared the same way.
+ */
+LUMINATE_API void luminate_policy_document_builder_free(LuminatePolicyDocumentBuilder *value);
+LUMINATE_API void luminate_scene_builder_free(LuminateSceneBuilder *value);
+LUMINATE_API void luminate_policy_document_free(LuminatePolicyDocument *value);
+LUMINATE_API void luminate_remote_principal_free(LuminateRemotePrincipal *value);
+LUMINATE_API void luminate_authorization_evaluation_free(LuminateAuthorizationEvaluation *value);
+LUMINATE_API void luminate_collection_outcome_free(LuminateCollectionOutcome *value);
+LUMINATE_API void luminate_attestation_list_free(LuminateAttestationList *value);
+LUMINATE_API void luminate_created_attestation_free(LuminateCreatedAttestation *value);
+LUMINATE_API void luminate_token_list_free(LuminateTokenList *value);
+LUMINATE_API void luminate_created_token_free(LuminateCreatedToken *value);
+LUMINATE_API void luminate_management_snapshot_free(LuminateManagementSnapshot *value);
+LUMINATE_API void luminate_management_change_set_free(LuminateManagementChangeSet *value);
+LUMINATE_API void luminate_management_patch_builder_free(LuminateManagementPatchBuilder *value);
+LUMINATE_API void luminate_setting_value_free(LuminateSettingValue *value);
+LUMINATE_API LUMINATE_NODISCARD LuminateStatus luminate_setting_value_new_boolean(bool value, LuminateSettingValue **out_value);
+LUMINATE_API LUMINATE_NODISCARD LuminateStatus luminate_setting_value_new_integer(int64_t value, LuminateSettingValue **out_value);
+
+/*
+ * Management accessors generated by local accessor macros.
+ */
+LUMINATE_API bool luminate_daemon_preferences_has_default_unsupported_policy(const LuminateDaemonPreferences *value);
+LUMINATE_API LuminateUnsupportedPolicy luminate_daemon_preferences_default_unsupported_policy(const LuminateDaemonPreferences *value);
+LUMINATE_API bool luminate_daemon_preferences_has_reconciliation_policy(const LuminateDaemonPreferences *value);
+LUMINATE_API LuminateReconciliationPolicy luminate_daemon_preferences_reconciliation_policy(const LuminateDaemonPreferences *value);
+LUMINATE_API bool luminate_daemon_preferences_has_cct_emulation(const LuminateDaemonPreferences *value);
+LUMINATE_API LuminateCctEmulation luminate_daemon_preferences_cct_emulation(const LuminateDaemonPreferences *value);
+LUMINATE_API bool luminate_daemon_preferences_has_prefer_shm(const LuminateDaemonPreferences *value);
+LUMINATE_API bool luminate_daemon_preferences_prefer_shm(const LuminateDaemonPreferences *value);
+LUMINATE_API bool luminate_daemon_preferences_has_prefer_client_shm(const LuminateDaemonPreferences *value);
+LUMINATE_API bool luminate_daemon_preferences_prefer_client_shm(const LuminateDaemonPreferences *value);
+LUMINATE_API LuminateStringView luminate_managed_plugin_name(const LuminateManagedPlugin *value);
+LUMINATE_API LuminateStringView luminate_managed_plugin_version(const LuminateManagedPlugin *value);
+LUMINATE_API bool luminate_managed_plugin_required(const LuminateManagedPlugin *value);
+LUMINATE_API bool luminate_managed_plugin_effective_enabled(const LuminateManagedPlugin *value);
+LUMINATE_API bool luminate_managed_plugin_activation_locked(const LuminateManagedPlugin *value);
+LUMINATE_API uintptr_t luminate_managed_plugin_desired_setting_count(const LuminateManagedPlugin *plugin);
+LUMINATE_API LuminateStringView luminate_managed_plugin_desired_setting_key_at(const LuminateManagedPlugin *plugin, uintptr_t index);
+LUMINATE_API const LuminateReportedSettingValue *luminate_managed_plugin_desired_setting_value_at(const LuminateManagedPlugin *plugin, uintptr_t index);
+LUMINATE_API uintptr_t luminate_managed_plugin_effective_setting_count(const LuminateManagedPlugin *plugin);
+LUMINATE_API LuminateStringView luminate_managed_plugin_effective_setting_key_at(const LuminateManagedPlugin *plugin, uintptr_t index);
+LUMINATE_API const LuminateReportedSettingValue *luminate_managed_plugin_effective_setting_value_at(const LuminateManagedPlugin *plugin, uintptr_t index);
+LUMINATE_API LuminateStringView luminate_plugin_setting_schema_key(const LuminatePluginSettingSchema *value);
+LUMINATE_API LuminateStringView luminate_plugin_setting_schema_label(const LuminatePluginSettingSchema *value);
+LUMINATE_API LuminateStringView luminate_plugin_setting_schema_description(const LuminatePluginSettingSchema *value);
+
+/*
+ * Ordinary-client selector operations generated by
+ * `client_selector_status_operation!`.
+ */
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_client_clear_target_selector(LuminateClient *client, const LuminateSelectorInput *selector, LuminateCollectionOutcome **out_outcome);
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_client_save_current_selector(LuminateClient *client, const LuminateSelectorInput *selector, LuminateCollectionOutcome **out_outcome);
+LUMINATE_API
+LUMINATE_NODISCARD
+LuminateStatus luminate_client_restore_appearance_selector(LuminateClient *client, const LuminateSelectorInput *selector, LuminateCollectionOutcome **out_outcome);
+
+/*
+ * Asynchronous request operations generated by local implementation macros.
+ */
+typedef void (*LuminateAsyncDeviceSnapshotCompletionFn)(void *context, const LuminateAsyncOperation *operation, LuminateStatus status, LuminateDeviceSnapshot *payload);
+typedef void (*LuminateAsyncStateSnapshotCompletionFn)(void *context, const LuminateAsyncOperation *operation, LuminateStatus status, LuminateStateSnapshot *payload);
+typedef void (*LuminateAsyncCollectionStateSnapshotCompletionFn)(void *context, const LuminateAsyncOperation *operation, LuminateStatus status, LuminateCollectionStateSnapshot *payload);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_ping_async(LuminateClient *client, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncStatusCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_rescan_async(LuminateClient *client, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncStatusCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_get_device_async(LuminateClient *client, const char *id, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncDeviceSnapshotCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_get_state_async(LuminateClient *client, const char *id, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncStateSnapshotCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_get_collection_state_async(LuminateClient *client, const char *id, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncCollectionStateSnapshotCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_set_brightness_async(LuminateClient *client, const LuminateTarget *target, uint32_t value, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncStatusCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_clear_target_async(LuminateClient *client, const LuminateTarget *target, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncStatusCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_set_off_async(LuminateClient *client, const LuminateTarget *target, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncStatusCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_restore_appearance_async(LuminateClient *client, const LuminateTarget *target, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncStatusCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_save_current_async(LuminateClient *client, const LuminateTarget *target, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncStatusCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_clear_target_selector_async(LuminateClient *client, const LuminateSelectorInput *selector, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncCollectionOutcomeCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_save_current_selector_async(LuminateClient *client, const LuminateSelectorInput *selector, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncCollectionOutcomeCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_restore_appearance_selector_async(LuminateClient *client, const LuminateSelectorInput *selector, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncCollectionOutcomeCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_transition_get_async(LuminateClient *client, const char *id, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncTransitionSnapshotCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_transition_abort_async(LuminateClient *client, const char *id, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncTransitionSnapshotCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+LUMINATE_API LUMINATE_NODISCARD
+LuminateStatus luminate_client_transition_wait_async(LuminateClient *client, const char *id, void *completion_context, LuminateCompletionContextFreeFn completion_context_free, LuminateAsyncTransitionSnapshotCompletionFn on_complete, LuminateAsyncOperation **out_operation);
+
+/*
+ * Policy constraint accessors generated by
+ * `policy.rs`'s `rule_constraint_string_accessors!` macro.
+ */
+LUMINATE_API
+size_t luminate_policy_rule_device_id_count(const LuminatePolicyRule *rule);
+LUMINATE_API
+LuminateStringView luminate_policy_rule_device_id_at(const LuminatePolicyRule *rule, size_t index);
+LUMINATE_API
+size_t luminate_policy_rule_provider_instance_count(const LuminatePolicyRule *rule);
+LUMINATE_API
+LuminateStringView luminate_policy_rule_provider_instance_at(const LuminatePolicyRule *rule, size_t index);
+LUMINATE_API
+size_t luminate_policy_rule_collection_count(const LuminatePolicyRule *rule);
+LUMINATE_API
+LuminateStringView luminate_policy_rule_collection_at(const LuminatePolicyRule *rule, size_t index);
+
+/*
+ * Policy binding accessors generated by
+ * `policy.rs`'s `binding_string_accessors!` macro.
+ */
+LUMINATE_API
+size_t luminate_policy_binding_subject_count(const LuminatePolicyBinding *binding);
+LUMINATE_API
+LuminateStringView luminate_policy_binding_subject_at(const LuminatePolicyBinding *binding, size_t index);
+LUMINATE_API
+size_t luminate_policy_binding_group_count(const LuminatePolicyBinding *binding);
+LUMINATE_API
+LuminateStringView luminate_policy_binding_group_at(const LuminatePolicyBinding *binding, size_t index);
+LUMINATE_API
+size_t luminate_policy_binding_role_count(const LuminatePolicyBinding *binding);
+LUMINATE_API
+LuminateStringView luminate_policy_binding_role_at(const LuminatePolicyBinding *binding, size_t index);
+
+static inline bool luminate_status_is_ok(LuminateStatus status) {
+  return status == LUMINATE_STATUS_OK;
+}
+
+static inline bool luminate_status_is_error(LuminateStatus status) {
+  return status != LUMINATE_STATUS_OK;
+}
+
+static inline bool luminate_string_view_is_present(LuminateStringView value) {
+  return value.data != NULL;
+}
+
+static inline bool luminate_string_view_is_empty(LuminateStringView value) {
+  return value.data != NULL && value.len == 0;
+}
+
+static inline bool luminate_string_view_equal(LuminateStringView left,
+                                               LuminateStringView right) {
+  return left.data != NULL && right.data != NULL && left.len == right.len &&
+         (left.len == 0 || memcmp(left.data, right.data, left.len) == 0);
+}
+
+static inline LuminateRgb luminate_rgb(uint8_t r, uint8_t g, uint8_t b) {
+  LuminateRgb value = {r, g, b};
+  return value;
+}
+
+static inline LuminateTarget luminate_target_device(const char *device_id) {
+  LuminateTarget target = {device_id, NULL, NULL, NULL};
+  return target;
+}
+
+static inline LuminateTarget luminate_target_surface(const char *device_id,
+                                                      const char *surface_id) {
+  LuminateTarget target = {device_id, surface_id, NULL, NULL};
+  return target;
+}
+
+static inline LuminateTarget luminate_target_element(const char *device_id,
+                                                      const char *surface_id,
+                                                      const char *element_id) {
+  LuminateTarget target = {device_id, surface_id, element_id, NULL};
+  return target;
+}
+
+static inline LuminateTarget luminate_target_group(const char *device_id,
+                                                    const char *group_id) {
+  LuminateTarget target = {device_id, NULL, NULL, group_id};
+  return target;
+}
+
+LUMINATE_END_DECLS
+
+#endif /* LUMINATE_H */"""
+language = "C"
+cpp_compat = true
+include_version = true
+documentation = true
+# `stdbool.h`/`stdint.h` are already added by cbindgen's own auto-detection;
+# `string.h` is only needed by the hand-written `memcmp` helper in `trailer`.
+sys_includes = ["string.h"]
+
+[fn]
+prefix = "LUMINATE_API"
+must_use = "LUMINATE_NODISCARD"
+
+[enum]
+rename_variants = "ScreamingSnakeCase"
+
+[parse]
+parse_deps = false
+
+[export]
+exclude = [
+  "VERSION_CSTR",
+]

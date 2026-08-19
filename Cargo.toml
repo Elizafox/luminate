@@ -1,0 +1,197 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+[workspace]
+resolver = "3"
+members = [
+  "crates/luminated",
+  "crates/libluminate",
+  "crates/luminate-cli",
+  "crates/luminate-http",
+  "crates/luminate-dbus",
+  "crates/luminate-core",
+  "crates/luminate-protocol",
+  "crates/luminate-plugin-api",
+  "crates/luminate-host-supervisor",
+  "crates/luminate-platform",
+  "plugins/luminate-plugin-demo-system",
+  "plugins/luminate-plugin-demo-keyboard",
+  "plugins/luminate-plugin-demo-bulb",
+  "plugins/luminate-plugin-demo-display",
+  "plugins/luminate-plugin-demo-ambient",
+  "plugins/luminate-plugin-alienware",
+  "plugins/luminate-plugin-lifx",
+  "plugins/luminate-plugin-linux-leds",
+  "plugins/luminate-plugin-wled",
+  "plugins/luminate-plugin-govee",
+  "plugins/luminate-plugin-razer",
+  "plugins/luminate-plugin-keychron",
+  "plugins/luminate-plugin-philips-hue",
+]
+# Hardware plugins are independent cdylibs the daemon dlopen's at runtime, not
+# Rust dependencies of anything else in the workspace, so there is no single
+# crate to hang a Cargo feature flag off to gate them. `default-members`
+# instead controls the set built by plain `cargo build`/`test`/`clippy` (no
+# `-p`, no `--workspace`), so local development and installs don't drag in
+# every hardware backend by default. `--workspace` (CI,
+# scripts/major-check.local.sh, the checks in CONTRIBUTING.md) still builds
+# everything explicitly, and packaging/install-linux.sh already selects plugins
+# one at a time via `-p` per INSTALL_*_PLUGIN toggle, so neither path loses
+# coverage.
+default-members = [
+  "crates/luminated",
+  "crates/libluminate",
+  "crates/luminate-cli",
+  "crates/luminate-http",
+  "crates/luminate-dbus",
+  "crates/luminate-core",
+  "crates/luminate-protocol",
+  "crates/luminate-plugin-api",
+  "crates/luminate-host-supervisor",
+  "crates/luminate-platform",
+]
+
+[profile.release]
+codegen-units = 4
+lto = "thin"
+
+[workspace.package]
+edition = "2024"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/Elizafox/luminate"
+readme = "README.md"
+rust-version = "1.89"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+unused_qualifications = "warn"
+unused_must_use = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+absolute_paths = "warn"
+allow_attributes_without_reason = "warn"
+as_pointer_underscore = "warn"
+cfg_not_test = "warn"
+clone_on_ref_ptr = "warn"
+create_dir = "warn"
+dbg_macro = "warn"
+deref_by_slicing = "warn"
+empty_drop = "warn"
+empty_enum_variants_with_brackets = "warn"
+empty_structs_with_brackets = "warn"
+error_impl_error = "warn"
+exit = "warn"
+expect_used = "warn"
+filetype_is_file = "warn"
+float_cmp_const = "warn"
+fn_to_numeric_cast_any = "warn"
+get_unwrap = "warn"
+indexing_slicing = "warn"
+infinite_loop = "warn"
+iter_over_hash_type = "warn"
+large_include_file = "warn"
+lossy_float_literal = "warn"
+map_with_unused_argument_over_ranges = "warn"
+mem_forget = "warn"
+missing_assert_message = "warn"
+missing_asserts_for_indexing = "warn"
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+mixed_read_write_in_expression = "warn"
+multiple_unsafe_ops_per_block = "warn"
+mutex_atomic = "warn"
+mutex_integer = "warn"
+needless_raw_strings = "warn"
+non_zero_suggestions = "warn"
+panic = "warn"
+panic_in_result_fn = "warn"
+pathbuf_init_then_push = "warn"
+precedence_bits = "warn"
+print_stderr = "warn"
+print_stdout = "warn"
+pub_without_shorthand = "warn"
+rc_buffer = "warn"
+rc_mutex = "warn"
+redundant_test_prefix = "warn"
+redundant_type_annotations = "warn"
+ref_patterns = "warn"
+rest_pat_in_fully_bound_structs = "warn"
+return_and_then = "warn"
+same_name_method = "warn"
+self_named_module_files = "warn"
+semicolon_outside_block = "warn"
+str_to_string = "warn"
+string_lit_chars_any = "warn"
+string_slice = "warn"
+suspicious_xor_used_as_pow = "warn"
+tests_outside_test_module = "warn"
+todo = "warn"
+try_err = "warn"
+undocumented_unsafe_blocks = "warn"
+unimplemented = "warn"
+unnecessary_safety_comment = "warn"
+unnecessary_safety_doc = "warn"
+unneeded_field_pattern = "warn"
+unseparated_literal_suffix = "warn"
+unused_result_ok = "warn"
+unused_trait_names = "warn"
+unwrap_in_result = "warn"
+unwrap_used = "warn"
+use_debug = "warn"
+verbose_file_reads = "warn"
+wildcard_enum_match_arm = "warn"
+module_name_repetitions = "allow"
+
+[workspace.dependencies]
+anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+axum = "0.8"
+hyper = "1.11"
+hyper-util = "0.1"
+axum-server = "0.8"
+axum-extra = "0.12"
+tower-http = "0.7"
+utoipa = "5.5"
+utoipa-axum = "0.2"
+rustls = "0.23"
+rustls-pki-types = "1.12"
+tokio-rustls = "0.26"
+sha2 = "0.11"
+subtle = "2.6"
+zeroize = { version = "1.9", features = ["derive"] }
+x509-parser = "0.18.1"
+tracing-appender = "0.2.4"
+tracing-layer-win-eventlog = "1.0.1"
+ciborium = "0.2"
+clap = { version = "4", features = ["derive"] }
+libc = "0.2"
+serde = { version = "1", features = ["derive"] }
+toml = "1.1"
+serde_json = "1"
+httpdate = "1.0"
+tokio = { version = "1.53", features = ["full"] }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+libloading = "0.9.0"
+hidapi = "2"
+zbus = { version = "5", default-features = false, features = ["tokio"] }
+base64 = "0.23"
+socket2 = "0.6"
+# Temporary: use the upstream fix for eclipse-iceoryx/iceoryx2#1798, which is
+# not included in the latest crates.io release. Return this to the released
+# version once a release containing that fix is available.
+iceoryx2 = { git = "https://github.com/eclipse-iceoryx/iceoryx2.git", rev = "1fdbecf1e9e8cc3f15bc3bc3b17ecb9b8a34879b" }
+uuid = { version = "1", features = ["v4"] }
+getrandom = "0.4"
+palette = { version = "0.7", default-features = false, features = ["std"] }
+windows-service = "0.8"
+
+luminate-core = { path = "crates/luminate-core" }
+luminate-protocol = { path = "crates/luminate-protocol" }
+luminate-plugin-api = { path = "crates/luminate-plugin-api" }
+luminate-host-supervisor = { path = "crates/luminate-host-supervisor" }
+luminate-platform = { path = "crates/luminate-platform", default-features = false }
+libluminate = { path = "crates/libluminate" }

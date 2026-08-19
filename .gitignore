@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# Rust build and generated tooling output
+/target/
+**/*.rs.bk
+/coverage/
+*.profraw
+*.profdata
+lcov.info
+/compile_commands.json
+/rust-project.json
+
+# Native package artifacts
+*.apk
+*.deb
+*.rpm
+
+# Local runtime output
+*.log
+*.pid
+*.sock
+core
+core.*
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+.abuild/
+*.rsa
+*.rsa.pub
+
+# Editor state
+/.idea/
+/.vscode/
+*.swp
+*.swo
+*~
+
+# OS metadata and interrupted patch output
+.DS_Store
+Thumbs.db
+*.orig
+*.rej
+
+# Media files for testing
+*.webm
+*.mp4
+*.mkv
+*.opus
+*.mp3
+*.aac

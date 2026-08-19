@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: LGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+[package]
+name = "luminate-platform"
+version = "0.1.0"
+edition.workspace = true
+license = "LGPL-3.0-or-later"
+repository.workspace = true
+rust-version.workspace = true
+description = "Genuinely platform-dependent facts, isolated from the rest of the workspace"
+
+[features]
+# Cross-crate equivalent of `#[cfg(test)]`: that attribute only reaches this
+# crate's own unit tests, not another crate's integration test binaries,
+# which depend on this crate like any other and need the helpers reachable
+# through an ordinary `[dev-dependencies]` feature instead.
+test-support = []
+# systemd-logind / elogind suspend-resume integration on Linux --
+# `org.freedesktop.login1` is present on essentially every Linux desktop, and
+# a machine without it degrades to a warning rather than failing (see
+# `src/linux/power/logind.rs`). On by default; turn it off for a build that
+# must not link zbus, e.g. a minimal embedded target.
+default = ["logind"]
+logind = ["dep:zbus", "dep:futures-util"]
+
+[dependencies]
+tracing.workspace = true
+tracing-subscriber.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+getrandom.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+futures-util = { workspace = true, optional = true }
+zbus = { workspace = true, optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Default features left on for now (rather than curated down to exactly what
+# `macos::power` uses, the way the `windows-sys` feature list below is): this
+# workspace has no macOS host to compile-check against, only occasional
+# manual VM runs (see `docs/development/cross-platform-testing.md`), so trimming
+# features blind risks a silent gap discovered only much later. Revisit once
+# this has had a real build/test pass.
+objc2-io-kit = "0.3.2"
+objc2-core-foundation = "0.3.2"
+
+[target.'cfg(windows)'.dependencies]
+windows-service.workspace = true
+tracing-layer-win-eventlog.workspace = true
+windows-sys = { version = "0.61", features = [
+  "Win32_Devices_HumanInterfaceDevice",
+  "Win32_Devices_Usb",
+  "Win32_Foundation",
+  "Win32_NetworkManagement_NetManagement",
+  "Win32_Security",
+  "Win32_Security_Authentication_Identity",
+  "Win32_Security_Authorization",
+  "Win32_Storage_FileSystem",
+  "Win32_System_Com",
+  "Win32_System_Pipes",
+  "Win32_System_Power",
+  "Win32_System_Registry",
+  "Win32_System_Services",
+  "Win32_System_SystemServices",
+  "Win32_System_Threading",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

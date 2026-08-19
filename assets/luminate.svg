@@ -1,0 +1,50 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title description">
+  <title id="title">Luminate</title>
+  <desc id="description">A glowing light surrounded by a circular colour wheel.</desc>
+
+  <defs>
+    <radialGradient id="light" cx="50%" cy="44%" r="58%">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="0.48" stop-color="#fffbe8"/>
+      <stop offset="0.78" stop-color="#ffe997"/>
+      <stop offset="1" stop-color="#ffc83d"/>
+    </radialGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="3.5"/>
+    </filter>
+  </defs>
+
+  <!-- The dark outer keyline keeps the transparent icon crisp on pale surfaces. -->
+  <circle cx="64" cy="64" r="56" fill="none" stroke="#111827" stroke-opacity=".38" stroke-width="2"/>
+
+  <!-- Twelve contiguous facets give broad SVG support without relying on conic gradients. -->
+  <g>
+    <path fill="#ff3b30" d="M64 10A54 54 0 0 1 91 17.235L83.5 30.225A39 39 0 0 0 64 25Z"/>
+    <path fill="#ff7a1a" d="M91 17.235A54 54 0 0 1 110.765 37L97.775 44.5A39 39 0 0 0 83.5 30.225Z"/>
+    <path fill="#ffc400" d="M110.765 37A54 54 0 0 1 118 64H103A39 39 0 0 0 97.775 44.5Z"/>
+    <path fill="#9ddc22" d="M118 64A54 54 0 0 1 110.765 91L97.775 83.5A39 39 0 0 0 103 64Z"/>
+    <path fill="#23c55e" d="M110.765 91A54 54 0 0 1 91 110.765L83.5 97.775A39 39 0 0 0 97.775 83.5Z"/>
+    <path fill="#12c7b5" d="M91 110.765A54 54 0 0 1 64 118V103A39 39 0 0 0 83.5 97.775Z"/>
+    <path fill="#20a4f3" d="M64 118A54 54 0 0 1 37 110.765L44.5 97.775A39 39 0 0 0 64 103Z"/>
+    <path fill="#3877f2" d="M37 110.765A54 54 0 0 1 17.235 91L30.225 83.5A39 39 0 0 0 44.5 97.775Z"/>
+    <path fill="#6557e8" d="M17.235 91A54 54 0 0 1 10 64H25A39 39 0 0 0 30.225 83.5Z"/>
+    <path fill="#a84ce6" d="M10 64A54 54 0 0 1 17.235 37L30.225 44.5A39 39 0 0 0 25 64Z"/>
+    <path fill="#e345b6" d="M17.235 37A54 54 0 0 1 37 17.235L44.5 30.225A39 39 0 0 0 30.225 44.5Z"/>
+    <path fill="#f43f70" d="M37 17.235A54 54 0 0 1 64 10V25A39 39 0 0 0 44.5 30.225Z"/>
+  </g>
+
+  <!-- A low-opacity halo reads as emitted light without muddying the colour wheel. -->
+  <circle cx="64" cy="64" r="30" fill="#ffd95a" fill-opacity=".42" filter="url(#glow)"/>
+  <g fill="none" stroke="#273142" stroke-opacity=".28" stroke-width="5" stroke-linecap="round">
+    <path d="M64 31V35M87.335 40.665L84.5 43.5M97 64H93M87.335 87.335L84.5 84.5M64 97V93M40.665 87.335L43.5 84.5M31 64H35M40.665 40.665L43.5 43.5"/>
+  </g>
+  <g fill="none" stroke="#fff8ca" stroke-width="3" stroke-linecap="round">
+    <path d="M64 31V35M87.335 40.665L84.5 43.5M97 64H93M87.335 87.335L84.5 84.5M64 97V93M40.665 87.335L43.5 84.5M31 64H35M40.665 40.665L43.5 43.5"/>
+  </g>
+
+  <circle cx="64" cy="64" r="24" fill="#111827" fill-opacity=".3"/>
+  <circle cx="64" cy="64" r="22.5" fill="url(#light)"/>
+  <ellipse cx="58" cy="56" rx="8" ry="6" fill="#fff" fill-opacity=".68"/>
+</svg>

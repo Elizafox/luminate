@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# Dedicated identity for the optional HTTP front end.
+u @LUMINATE_HTTP_USER@ - "Luminate HTTP API" @HTTP_STATE_DIR@ -
+m @LUMINATE_HTTP_USER@ @LUMINATE_GROUP@

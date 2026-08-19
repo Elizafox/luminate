@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# Test code is exempt from the panic-safety restriction lints declared in
+# the workspace [lints] table (unwrap_used, expect_used, panic,
+# indexing_slicing): tests are expected to fail loudly and immediately on a
+# bad assumption, which is exactly what unwrap/expect/indexing/panic give
+# you. Production code still gets the full lint.
+absolute-paths-max-segments = 2
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
+allow-dbg-in-tests = true
+suppress-restriction-lint-in-const = true

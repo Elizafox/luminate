@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# sysusers.d entry for the optional D-Bus bridge service account.
+#
+# luminate-dbus runs as its own dedicated system account rather than root or
+# the daemon account @LUMINATE_USER@, so daemon-side authorization policy can
+# grant its Unix identity an explicit, scoped ceiling instead of seeing a
+# generic privileged one (see "D-Bus and Polkit" in
+# docs/development/architecture/client-authorization.md). It joins
+# @LUMINATE_GROUP@ so it can reach the control socket like any other named
+# client.
+
+u @LUMINATE_DBUS_USER@ - "Luminate D-Bus bridge" - -
+m @LUMINATE_DBUS_USER@ @LUMINATE_GROUP@

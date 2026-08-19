@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# sysusers.d entries for packaged Luminate installs.
+#
+# The daemon runs as @LUMINATE_USER@ and the control socket / hardware device
+# client socket access group is @LUMINATE_GROUP@; udev owns hardware nodes
+# directly by @LUMINATE_USER@.
+
+g @LUMINATE_GROUP@ -
+u @LUMINATE_USER@ - "Luminate lighting daemon" @STATE_DIR@ -
+m @LUMINATE_USER@ @LUMINATE_GROUP@

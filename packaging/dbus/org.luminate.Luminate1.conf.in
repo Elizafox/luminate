@@ -1,0 +1,13 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford -->
+
+<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+<busconfig>
+  <policy user="@LUMINATE_DBUS_USER@">
+    <allow own="org.luminate.Luminate1"/>
+  </policy>
+  <policy context="default">
+    <allow send_destination="org.luminate.Luminate1"/>
+  </policy>
+</busconfig>

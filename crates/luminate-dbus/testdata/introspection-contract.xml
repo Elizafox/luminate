@@ -1,0 +1,471 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford -->
+
+MANAGER
+<interface name="org.luminate.Luminate1.Manager1">
+  <method name="RefreshTopology">
+  </method>
+  <method name="ListScenes">
+    <arg type="a(stsbsssa(ssa{sv}))" direction="out"/>
+  </method>
+  <method name="GetScene">
+    <arg name="id" type="s" direction="in"/>
+    <arg type="(stsbsssa(ssa{sv}))" direction="out"/>
+  </method>
+  <method name="CreateScene">
+    <arg name="name" type="s" direction="in"/>
+    <arg name="has_description" type="b" direction="in"/>
+    <arg name="description" type="s" direction="in"/>
+    <arg name="bindings" type="aa{sv}" direction="in"/>
+    <arg type="(stsbsssa(ssa{sv}))" direction="out"/>
+  </method>
+  <method name="CaptureScene">
+    <arg name="name" type="s" direction="in"/>
+    <arg name="has_description" type="b" direction="in"/>
+    <arg name="description" type="s" direction="in"/>
+    <arg name="has_dynamic_collection" type="b" direction="in"/>
+    <arg name="dynamic_collection" type="s" direction="in"/>
+    <arg name="targets" type="as" direction="in"/>
+    <arg type="(stsbsssa(ssa{sv}))" direction="out"/>
+  </method>
+  <method name="ReplaceScene">
+    <arg name="id" type="s" direction="in"/>
+    <arg name="expected_revision" type="t" direction="in"/>
+    <arg name="name" type="s" direction="in"/>
+    <arg name="has_description" type="b" direction="in"/>
+    <arg name="description" type="s" direction="in"/>
+    <arg name="bindings" type="aa{sv}" direction="in"/>
+    <arg type="(stsbsssa(ssa{sv}))" direction="out"/>
+  </method>
+  <method name="RecaptureScene">
+    <arg name="id" type="s" direction="in"/>
+    <arg name="expected_revision" type="t" direction="in"/>
+    <arg name="has_dynamic_collection" type="b" direction="in"/>
+    <arg name="dynamic_collection" type="s" direction="in"/>
+    <arg name="targets" type="as" direction="in"/>
+    <arg type="(stsbsssa(ssa{sv}))" direction="out"/>
+  </method>
+  <method name="DeleteScene">
+    <arg name="id" type="s" direction="in"/>
+    <arg name="expected_revision" type="t" direction="in"/>
+  </method>
+  <method name="ApplyScene">
+    <arg name="id" type="s" direction="in"/>
+    <arg type="as" direction="out"/>
+    <arg type="as" direction="out"/>
+  </method>
+  <method name="GetManagement">
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="GetAccessPolicy">
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="ReplaceAccessPolicy">
+    <arg name="expected_revision" type="t" direction="in"/>
+    <arg name="replacement" type="a{sv}" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="PatchManagement">
+    <arg name="expected_revision" type="t" direction="in"/>
+    <arg name="mutations" type="aa{sv}" direction="in"/>
+    <arg type="t" direction="out"/>
+    <arg type="a(ssasb)" direction="out"/>
+  </method>
+  <method name="ListTokens">
+    <arg type="a(sssbtb)" direction="out"/>
+  </method>
+  <method name="CreateToken">
+    <arg name="id" type="s" direction="in"/>
+    <arg name="authority" type="s" direction="in"/>
+    <arg name="subject" type="s" direction="in"/>
+    <arg name="has_expiry" type="b" direction="in"/>
+    <arg name="expires_at_unix_ms" type="t" direction="in"/>
+    <arg type="(sssbtb)" direction="out"/>
+    <arg type="ay" direction="out"/>
+  </method>
+  <method name="RotateToken">
+    <arg name="id" type="s" direction="in"/>
+    <arg name="has_expiry" type="b" direction="in"/>
+    <arg name="expires_at_unix_ms" type="t" direction="in"/>
+    <arg type="(sssbtb)" direction="out"/>
+    <arg type="ay" direction="out"/>
+  </method>
+  <method name="RevokeToken">
+    <arg name="id" type="s" direction="in"/>
+  </method>
+  <signal name="ConfigurationChanged">
+    <arg name="revision" type="t"/>
+    <arg name="changes" type="a(ssasb)"/>
+  </signal>
+  <signal name="ScenesChanged">
+  </signal>
+  <property name="Available" type="b" access="read"/>
+</interface>
+MANAGER2
+<interface name="org.luminate.Luminate1.Manager2">
+  <method name="ServerInformation">
+    <arg type="s" direction="out"/>
+    <arg type="s" direction="out"/>
+    <arg type="u" direction="out"/>
+  </method>
+  <method name="Ping">
+  </method>
+  <method name="ListWithdrawnDevices">
+    <arg type="as" direction="out"/>
+  </method>
+  <method name="ListDevices">
+    <arg type="aa{sv}" direction="out"/>
+  </method>
+  <method name="GetDevice">
+    <arg name="id" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="GetDeviceState">
+    <arg name="id" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="Rescan">
+  </method>
+  <method name="PurgeWithdrawnDevice">
+    <arg name="device" type="s" direction="in"/>
+  </method>
+  <method name="ListCollections">
+    <arg type="aa{sv}" direction="out"/>
+  </method>
+  <method name="GetCollection">
+    <arg name="id" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="GetCollectionState">
+    <arg name="id" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="CreateCollection">
+    <arg name="request" type="a{sv}" direction="in"/>
+    <arg type="s" direction="out"/>
+  </method>
+  <method name="DestroyCollection">
+    <arg name="id" type="s" direction="in"/>
+  </method>
+  <method name="AddCollectionMember">
+    <arg name="id" type="s" direction="in"/>
+    <arg name="member" type="a{sv}" direction="in"/>
+  </method>
+  <method name="RemoveCollectionMember">
+    <arg name="id" type="s" direction="in"/>
+    <arg name="member" type="a{sv}" direction="in"/>
+  </method>
+  <method name="SetEffectSelector">
+    <arg name="selector" type="a{sv}" direction="in"/>
+    <arg name="effect" type="a{sv}" direction="in"/>
+    <arg name="has_on_unsupported" type="b" direction="in"/>
+    <arg name="on_unsupported" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="SetColourSelector">
+    <arg name="selector" type="a{sv}" direction="in"/>
+    <arg name="colour" type="a{sv}" direction="in"/>
+    <arg name="has_on_unsupported" type="b" direction="in"/>
+    <arg name="on_unsupported" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="SetRgbSelector">
+    <arg name="selector" type="a{sv}" direction="in"/>
+    <arg name="red" type="y" direction="in"/>
+    <arg name="green" type="y" direction="in"/>
+    <arg name="blue" type="y" direction="in"/>
+    <arg name="has_on_unsupported" type="b" direction="in"/>
+    <arg name="on_unsupported" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="SetCctSelector">
+    <arg name="selector" type="a{sv}" direction="in"/>
+    <arg name="kelvin" type="u" direction="in"/>
+    <arg name="has_on_unsupported" type="b" direction="in"/>
+    <arg name="on_unsupported" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="SetBrightnessSelector">
+    <arg name="selector" type="a{sv}" direction="in"/>
+    <arg name="value" type="u" direction="in"/>
+    <arg name="has_on_unsupported" type="b" direction="in"/>
+    <arg name="on_unsupported" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="ClearSelector">
+    <arg name="selector" type="a{sv}" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="SaveCurrentSelector">
+    <arg name="selector" type="a{sv}" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="RestoreAppearanceSelector">
+    <arg name="selector" type="a{sv}" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="SetEmissionSelector">
+    <arg name="selector" type="a{sv}" direction="in"/>
+    <arg name="state" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="CreateSceneToSceneTransition">
+    <arg name="source" type="s" direction="in"/>
+    <arg name="destination" type="s" direction="in"/>
+    <arg name="options" type="a{sv}" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="CreateCurrentToSceneTransition">
+    <arg name="destination" type="s" direction="in"/>
+    <arg name="options" type="a{sv}" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="CreateSceneToStatesTransition">
+    <arg name="source" type="s" direction="in"/>
+    <arg name="destination" type="aa{sv}" direction="in"/>
+    <arg name="options" type="a{sv}" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="CreateCurrentToStatesTransition">
+    <arg name="destination" type="aa{sv}" direction="in"/>
+    <arg name="options" type="a{sv}" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="GetTransition">
+    <arg name="id" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="AbortTransition">
+    <arg name="id" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="WaitTransition">
+    <arg name="id" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="BeginFrameStream">
+    <arg name="target" type="s" direction="in"/>
+    <arg type="u" direction="out"/>
+  </method>
+  <method name="UploadFrame">
+    <arg name="target" type="s" direction="in"/>
+    <arg name="request" type="a{sv}" direction="in"/>
+    <arg type="t" direction="out"/>
+    <arg type="b" direction="out"/>
+  </method>
+  <method name="EndFrameStream">
+    <arg name="target" type="s" direction="in"/>
+    <arg name="generation" type="u" direction="in"/>
+  </method>
+  <method name="SessionInformation">
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="PluginSetupWorkflows">
+    <arg name="plugin" type="s" direction="in"/>
+    <arg type="aa{sv}" direction="out"/>
+  </method>
+  <method name="StartPluginSetup">
+    <arg name="plugin" type="s" direction="in"/>
+    <arg name="workflow" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="RespondPluginSetup">
+    <arg name="session" type="s" direction="in"/>
+    <arg name="generation" type="t" direction="in"/>
+    <arg name="response" type="a{sv}" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="PluginSetupSession">
+    <arg name="session" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="CancelPluginSetup">
+    <arg name="session" type="s" direction="in"/>
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="CreateAttestation">
+    <arg name="name" type="s" direction="in"/>
+    <arg name="authority" type="s" direction="in"/>
+    <arg name="subject" type="s" direction="in"/>
+    <arg name="has_expiry" type="b" direction="in"/>
+    <arg name="expires_at_unix_ms" type="t" direction="in"/>
+    <arg type="(sssassbt)" direction="out"/>
+    <arg type="ay" direction="out"/>
+  </method>
+  <method name="CreatePrincipalAttestation">
+    <arg name="name" type="s" direction="in"/>
+    <arg name="authority" type="s" direction="in"/>
+    <arg name="subject" type="s" direction="in"/>
+    <arg name="verified_groups" type="as" direction="in"/>
+    <arg name="has_expiry" type="b" direction="in"/>
+    <arg name="expires_at_unix_ms" type="t" direction="in"/>
+    <arg type="(sssassbt)" direction="out"/>
+    <arg type="ay" direction="out"/>
+  </method>
+  <method name="ListAttestations">
+    <arg type="a(sssassbt)" direction="out"/>
+  </method>
+  <method name="RevokeAttestation">
+    <arg name="name" type="s" direction="in"/>
+  </method>
+  <signal name="TopologyChanged">
+    <arg name="devices" type="as"/>
+  </signal>
+  <signal name="StateChanged">
+    <arg name="devices" type="as"/>
+  </signal>
+  <signal name="TransitionsChanged">
+    <arg name="transitions" type="as"/>
+  </signal>
+  <signal name="ShmStreamEnded">
+    <arg name="target" type="s"/>
+    <arg name="generation" type="u"/>
+  </signal>
+  <signal name="ConfigurationChanged">
+    <arg name="revision" type="t"/>
+    <arg name="changes" type="a(ssasb)"/>
+  </signal>
+  <signal name="ScenesChanged">
+  </signal>
+  <property name="Available" type="b" access="read"/>
+</interface>
+TARGET
+<interface name="org.luminate.Target2">
+  <method name="State">
+    <arg type="a(sssbt)" direction="out"/>
+  </method>
+  <method name="RefreshState">
+  </method>
+  <method name="SetBrightness">
+    <arg name="value" type="u" direction="in"/>
+  </method>
+  <method name="SetEffect">
+    <arg name="request" type="a{sv}" direction="in"/>
+  </method>
+  <method name="SetAppearanceSlots">
+    <arg name="values" type="a(sa{sv})" direction="in"/>
+  </method>
+  <method name="Off">
+  </method>
+  <method name="ClearDesiredState">
+  </method>
+  <property name="AppearanceSlotDescriptors" type="a(ssa(sa(sy))a(ssa(suuua(ss)))asas)" access="read"/>
+  <property name="AppearanceSlotUpdatePolicy" type="s" access="read"/>
+  <property name="BrightnessMaximum" type="u" access="read"/>
+  <property name="CanSetBrightness" type="b" access="read"/>
+  <property name="CanSetEffect" type="b" access="read"/>
+  <property name="CanSetOff" type="b" access="read"/>
+  <property name="EffectDescriptors" type="a(ssa(suuua(ss)))" access="read"/>
+  <property name="Identifier" type="s" access="read"/>
+  <property name="StaticColourCapabilities" type="a(sa(sy))" access="read"/>
+</interface>
+TARGET3
+<interface name="org.luminate.Target3">
+  <method name="State">
+    <arg type="a{sv}" direction="out"/>
+  </method>
+  <method name="SetColour">
+    <arg name="colour" type="a{sv}" direction="in"/>
+  </method>
+  <method name="SetRgb">
+    <arg name="red" type="y" direction="in"/>
+    <arg name="green" type="y" direction="in"/>
+    <arg name="blue" type="y" direction="in"/>
+  </method>
+  <method name="SetCct">
+    <arg name="kelvin" type="u" direction="in"/>
+  </method>
+  <method name="SaveCurrent">
+  </method>
+  <method name="RestoreAppearance">
+  </method>
+  <method name="SetEmission">
+    <arg name="state" type="s" direction="in"/>
+  </method>
+  <property name="Capabilities" type="a{sv}" access="read"/>
+  <property name="Identifier" type="s" access="read"/>
+</interface>
+DEVICE
+<interface name="org.luminate.Luminate1.Device1">
+  <property name="Name" type="s" access="read"/>
+</interface>
+DEVICE2
+<interface name="org.luminate.Luminate1.Device2">
+  <property name="Category" type="s" access="read"/>
+  <property name="Groups" type="ao" access="read"/>
+  <property name="HasCategory" type="b" access="read"/>
+  <property name="HasModel" type="b" access="read"/>
+  <property name="HasProviderInstance" type="b" access="read"/>
+  <property name="HasVendor" type="b" access="read"/>
+  <property name="HostAttached" type="b" access="read"/>
+  <property name="Id" type="s" access="read"/>
+  <property name="Model" type="s" access="read"/>
+  <property name="Name" type="s" access="read"/>
+  <property name="Notes" type="as" access="read"/>
+  <property name="PhysicalTags" type="as" access="read"/>
+  <property name="ProviderInstance" type="s" access="read"/>
+  <property name="Surfaces" type="ao" access="read"/>
+  <property name="Vendor" type="s" access="read"/>
+  <property name="Warnings" type="as" access="read"/>
+</interface>
+SURFACE
+<interface name="org.luminate.Luminate1.Surface1">
+  <property name="Name" type="s" access="read"/>
+</interface>
+SURFACE2
+<interface name="org.luminate.Luminate1.Surface2">
+  <property name="Columns" type="q" access="read"/>
+  <property name="Elements" type="ao" access="read"/>
+  <property name="HasDimensions" type="b" access="read"/>
+  <property name="HasLength" type="b" access="read"/>
+  <property name="HasMatrix" type="b" access="read"/>
+  <property name="Height" type="d" access="read"/>
+  <property name="Id" type="s" access="read"/>
+  <property name="Kind" type="s" access="read"/>
+  <property name="Length" type="d" access="read"/>
+  <property name="Name" type="s" access="read"/>
+  <property name="Notes" type="as" access="read"/>
+  <property name="PhysicalTags" type="as" access="read"/>
+  <property name="Rows" type="q" access="read"/>
+  <property name="Warnings" type="as" access="read"/>
+  <property name="Width" type="d" access="read"/>
+</interface>
+GROUP
+<interface name="org.luminate.Luminate1.Group1">
+  <property name="Name" type="s" access="read"/>
+</interface>
+GROUP2
+<interface name="org.luminate.Luminate1.Group2">
+  <property name="Description" type="s" access="read"/>
+  <property name="HasDescription" type="b" access="read"/>
+  <property name="Id" type="s" access="read"/>
+  <property name="Kind" type="s" access="read"/>
+  <property name="Members" type="ao" access="read"/>
+  <property name="Name" type="s" access="read"/>
+  <property name="Notes" type="as" access="read"/>
+  <property name="Warnings" type="as" access="read"/>
+</interface>
+ELEMENT
+<interface name="org.luminate.Luminate1.Element1">
+  <property name="Name" type="s" access="read"/>
+</interface>
+ELEMENT2
+<interface name="org.luminate.Luminate1.Element2">
+  <property name="Column" type="q" access="read"/>
+  <property name="GeometryKind" type="s" access="read"/>
+  <property name="HasGeometry" type="b" access="read"/>
+  <property name="HasName" type="b" access="read"/>
+  <property name="Height" type="d" access="read"/>
+  <property name="Id" type="s" access="read"/>
+  <property name="Kind" type="s" access="read"/>
+  <property name="Name" type="s" access="read"/>
+  <property name="Notes" type="as" access="read"/>
+  <property name="PhysicalTags" type="as" access="read"/>
+  <property name="Position" type="d" access="read"/>
+  <property name="Row" type="q" access="read"/>
+  <property name="Surface" type="o" access="read"/>
+  <property name="Warnings" type="as" access="read"/>
+  <property name="Width" type="d" access="read"/>
+  <property name="X" type="d" access="read"/>
+  <property name="Y" type="d" access="read"/>
+</interface>

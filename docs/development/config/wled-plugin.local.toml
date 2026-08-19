@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+socket_path = "/tmp/luminated-wled/luminated.sock"
+state_path = "/tmp/luminated-wled/state.json"
+
+[plugin_management]
+activation = "explicit"
+
+[[plugins]]
+path = "/home/elizabeth/dev/luminate/target/debug/libluminate_plugin_wled.so"
+required = true
+
+# Optional administrator-owned policy for this plugin stays on the same entry.
+# activation = "enabled"
+# reconciliation = "Restore"
+# locked_settings = ["mdns"]
+
+[plugins.config]
+# mDNS discovery is enabled by default. Set explicit endpoints when multicast
+# discovery is unavailable; an empty array intentionally configures none.
+mdns = true
+endpoints = []

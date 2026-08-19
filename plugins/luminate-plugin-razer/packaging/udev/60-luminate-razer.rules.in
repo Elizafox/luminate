@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# Luminate Razer plugin access for exact imported wired keyboard lighting
+# interfaces. Input interfaces deliberately remain inaccessible to the daemon.
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="0287", ENV{ID_USB_INTERFACE_NUM}=="03", OWNER="@LUMINATE_USER@", MODE="0600"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="028d", ENV{ID_USB_INTERFACE_NUM}=="03", OWNER="@LUMINATE_USER@", MODE="0600"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="02a5", ENV{ID_USB_INTERFACE_NUM}=="03", OWNER="@LUMINATE_USER@", MODE="0600"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="02b9", ENV{ID_USB_INTERFACE_NUM}=="03", OWNER="@LUMINATE_USER@", MODE="0600"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="02d7", ENV{ID_USB_INTERFACE_NUM}=="03", OWNER="@LUMINATE_USER@", MODE="0600"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="0258", ENV{ID_USB_INTERFACE_NUM}=="03", OWNER="@LUMINATE_USER@", MODE="0600"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="0282", ENV{ID_USB_INTERFACE_NUM}=="03", OWNER="@LUMINATE_USER@", MODE="0600"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="0266", ENV{ID_USB_INTERFACE_NUM}=="03", OWNER="@LUMINATE_USER@", MODE="0600"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="026b", ENV{ID_USB_INTERFACE_NUM}=="03", OWNER="@LUMINATE_USER@", MODE="0600"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="026c", ENV{ID_USB_INTERFACE_NUM}=="03", OWNER="@LUMINATE_USER@", MODE="0600"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="02a6", ENV{ID_USB_INTERFACE_NUM}=="03", OWNER="@LUMINATE_USER@", MODE="0600"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="02a7", ENV{ID_USB_INTERFACE_NUM}=="03", OWNER="@LUMINATE_USER@", MODE="0600"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="0295", ENV{ID_USB_INTERFACE_NUM}=="03", OWNER="@LUMINATE_USER@", MODE="0600"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="0292", ENV{ID_USB_INTERFACE_NUM}=="03", OWNER="@LUMINATE_USER@", MODE="0600"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="0298", ENV{ID_USB_INTERFACE_NUM}=="03", OWNER="@LUMINATE_USER@", MODE="0600"

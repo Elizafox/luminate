@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# Set this to the companion's LAN address when a trusted reverse proxy provides
+# TLS and appropriate request-size, connection, and rate limits.
+# luminate_http_listen="@HTTP_LISTEN@"
+
+# Additional TLS, origin, proxy, and resource-limit arguments.
+# luminate_http_options="--tls-certificate /etc/luminate/http.crt --tls-private-key /etc/luminate/http.key"

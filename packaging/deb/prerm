@@ -1,0 +1,11 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+set -e
+
+if [ "$1" = "remove" ]; then
+  systemctl stop luminate-dbus.service luminate-http.service luminated.service || true
+fi
+
+exit 0

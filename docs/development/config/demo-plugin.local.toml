@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+socket_path = "/tmp/luminated-demo/luminated.sock"
+state_path = "/tmp/luminated-demo/state.json"
+
+[plugin_management]
+activation = "explicit"
+
+[[plugins]]
+path = "/home/elizabeth/dev/luminate/target/debug/libluminate_plugin_demo_system.so"
+required = true

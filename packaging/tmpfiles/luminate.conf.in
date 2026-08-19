@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# tmpfiles.d entries for packaged Luminate installs.
+
+d @CONFIG_DIR@ 0755 root root -
+d @STATE_DIR@ 0750 @LUMINATE_USER@ @LUMINATE_GROUP@ -
+d @RUNTIME_DIR@ 0750 @LUMINATE_USER@ @LUMINATE_GROUP@ -

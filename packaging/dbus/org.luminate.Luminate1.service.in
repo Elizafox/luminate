@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+[D-BUS Service]
+Name=org.luminate.Luminate1
+Exec=@BINDIR@/luminate-dbus
+User=@LUMINATE_DBUS_USER@
+SystemdService=luminate-dbus.service

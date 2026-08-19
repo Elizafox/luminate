@@ -1,0 +1,211 @@
+# SPDX-License-Identifier: CC-BY-SA-4.0
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# Complete luminated configuration reference.
+#
+# This file documents every daemon configuration field. It is valid TOML, but
+# the paths below are illustrative Linux installation paths rather than
+# portable defaults. Optional settings are commented out so copying this file
+# does not enable platform-specific features or impose arbitrary policy.
+#
+# luminated rejects unknown fields. Enum values are case-sensitive.
+
+# Client control socket.
+socket_path = "/run/luminate/luminated.sock"
+
+# Optional event socket. When set, it must differ from socket_path.
+# event_socket_path = "/run/luminate/luminated-events.sock"
+
+# Persistent daemon state.
+state_path = "/var/lib/luminate/state.json"
+
+# Plugin discovery directories, searched in order.
+plugin_dirs = [
+  "/usr/local/lib/luminate/plugins",
+  "/usr/lib/luminate/plugins",
+]
+
+# Behaviour for collection operations containing unsupported members.
+# Values: "Skip", "Reject". Default: "Skip".
+default_unsupported_policy = "Skip"
+
+# Optional global device-state reconciliation policy.
+# Values: "Restore", "Adopt", "Leave".
+# Device and plugin overrides take precedence. When this is absent, luminated
+# uses the plugin recommendation and then its "Leave" fallback.
+# reconciliation_policy = "Leave"
+
+# Optional global override for correlated-colour-temperature emulation.
+# Values: "Auto", "Disabled". When absent, each target's advertised behaviour
+# applies. A plugin-provided "Disabled" setting always takes precedence.
+# cct_emulation = "Auto"
+
+# Prefer shared memory for the daemon-to-plugin-host frame-streaming leg.
+# Disable this to force that leg through the ordinary pipe. Default: true.
+prefer_shm = true
+
+# Offer shared-memory client-to-daemon frame streaming to eligible same-user
+# clients. Other clients continue to use ordinary frame streaming. This is
+# independent of prefer_shm. Default: true.
+prefer_client_shm = true
+
+
+# Per-device reconciliation overrides. Keys are stable device IDs.
+# Values: "Restore", "Adopt", "Leave".
+[device_reconciliation]
+# desk_keyboard = "Restore"
+# shared_bulb = "Adopt"
+
+
+# Administrator policy for the daemon-managed configuration layer.
+[management]
+
+# Optional managed configuration path. When absent, luminated uses managed.toml
+# beside state_path. It must differ from both state_path and this global file.
+# managed_config_path = "/var/lib/luminate/managed.toml"
+
+# Managed daemon preference keys which administrator policy locks.
+# Accepted keys are:
+#   default_unsupported_policy
+#   reconciliation_policy
+#   device_reconciliation
+#   device_reconciliation.<device-id>
+#   cct_emulation
+#   prefer_shm
+#   prefer_client_shm
+locked_daemon_settings = [
+  # "prefer_shm",
+  # "device_reconciliation.desk_keyboard",
+]
+
+
+# Automatic activation policy for discovered plugins.
+[plugin_management]
+
+# Values:
+#   "explicit"      activates only plugins selected by explicit policy
+#   "host-attached" also selects plugins on known local, non-network buses
+#   "all"           selects every discovered plugin
+# Default: "host-attached".
+activation = "host-attached"
+
+
+# Client authorization policy.
+[authorization]
+
+# Currently the only accepted policy. Default: "socket-access".
+policy = "socket-access"
+
+# Exact principals which retain policy and authentication recovery. Each item
+# requires non-empty authority and subject strings. Group membership does not
+# grant recovery access.
+recovery_principals = [
+  # { authority = "local", subject = "administrator" },
+]
+
+
+# Supervised executable authentication providers. Clients select `name`, while
+# authenticated PrincipalIds use `authority`. Executable and initialization
+# paths must be absolute. The initialization file is opened without following
+# symlinks and is passed as opaque bytes during the provider handshake.
+#
+# [[authorization.authentication_providers]]
+# name = "company-sso"
+# authority = "company.example"
+# executable = "/usr/libexec/luminate-auth-company"
+# initialization_file = "/etc/luminate/company-sso.secret"
+# required = true
+# max_sessions = 64
+
+
+# Optional daemon admission ceilings. Omit a value to retain the daemon's
+# conservative built-in ceiling for that dimension. Every configured value
+# must be greater than zero.
+[authorization.limits]
+# connections = 64
+# subscriptions = 16
+
+
+# Windows service-mode named-pipe admission. This section is parsed on every
+# platform but affects only listeners hosted by the Windows service. Console
+# mode remains owner-only. The default is the local group "Luminate Clients".
+[authorization.pipe_access]
+principal = "local-group"
+group = "Luminate Clients"
+
+# To admit only the interactive Windows user instead, replace the table above
+# with the following. The interactive form does not accept a group field.
+#
+# [authorization.pipe_access]
+# principal = "interactive"
+
+
+# Trusted front-end process registrations. A registration trusts the front-end
+# process to delegate identity; it does not grant permission to act as an end
+# user. Each entry must select exactly one identity form: uid or user on Unix,
+# and sid or account on Windows. Entries for other platforms remain portable
+# and do not require local account resolution.
+#
+# [[authorization.frontends]]
+# platform = "unix"
+# uid = 1001
+#
+# [[authorization.frontends]]
+# platform = "unix"
+# user = "luminate-http"
+#
+# [[authorization.frontends]]
+# platform = "windows"
+# sid = "S-1-5-18"
+#
+# [[authorization.frontends]]
+# platform = "windows"
+# account = "NT SERVICE\\luminate-http"
+
+
+# Explicit plugin entries. Repeat [[plugins]] for each plugin. At least one of
+# name or path is required; both may be provided. Entries are commented out so
+# this reference does not require a particular plugin installation.
+#
+# [[plugins]]
+# name = "luminate-plugin-wled"
+# path = "/usr/lib/luminate/plugins/libluminate_plugin_wled.so"
+# [plugins.config]
+# endpoints = ["192.0.2.10", "wled-office.local:8080"]
+# mdns = true
+# physical_tags = ["shape:planar"]
+#
+# [[plugins]]
+# name = "luminate-plugin-philips-hue"
+# path = "/usr/lib/luminate/plugins/libluminate_plugin_philips_hue.so"
+# [plugins.config]
+# bridge_id = "001788fffe123456"
+# application_key = "replace-with-the-local-application-key"
+# mdns = true
+#
+# A required plugin must load successfully at daemon startup. Default: false.
+# required = false
+#
+# Administrator-owned activation disposition:
+#   "managed"  lets managed desired state and global policy decide
+#   "enabled"  forces the plugin active
+#   "disabled" forces the plugin inactive
+# A required plugin cannot be disabled. Default: "managed".
+# activation = "managed"
+#
+# Optional plugin-specific reconciliation policy.
+# Values: "Restore", "Adopt", "Leave".
+# reconciliation = "Adopt"
+#
+# Plugin-defined dotted setting keys which managed configuration cannot
+# override. Components may contain ASCII letters, digits, underscores, and
+# hyphens.
+# locked_settings = [
+#   "discovery.address",
+# ]
+#
+# Arbitrary plugin-specific immutable settings delivered privately during host
+# initialization. Each plugin defines its own keys and value types.
+# [plugins.config]
+# discovery = true
+# endpoints = ["192.0.2.10", "wled.example:8080"]

@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# Luminate Alienware plugin hardware access rules.
+#
+# These grant only the packaged daemon account access to hardware supported by
+# this plugin. Client-group membership authorizes daemon requests, not raw
+# hardware access. Interactive development should use an explicit temporary ACL
+# on the specific hidraw node instead of weakening the production rules.
+
+# Alienware/Darfon internal keyboard RGB controller (hidraw backend).
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0d62", ATTRS{idProduct}=="d2b1", OWNER="@LUMINATE_USER@", MODE="0600"
+
+# Dell/Alienware AW-ELC RGB controllers with explicitly supported profiles
+# (hidraw backend). Unknown platforms sharing these USB IDs still fail closed
+# during the read-only firmware configuration query.
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="187c", ATTRS{idProduct}=="0550", OWNER="@LUMINATE_USER@", MODE="0600"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="187c", ATTRS{idProduct}=="0551", OWNER="@LUMINATE_USER@", MODE="0600"

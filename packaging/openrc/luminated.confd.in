@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# Optional OpenRC overrides for luminated. The packaged binary already has the
+# default config, socket, state, and plugin paths compiled in.
+
+# luminated_config="@CONFIG_PATH@"
+# luminated_log="info"

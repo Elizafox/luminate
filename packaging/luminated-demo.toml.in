@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# Example luminated configuration that loads the bundled demo-system plugin.
+#
+# The demo plugin exposes FAKE devices (it always probes successfully and ACKs
+# changes without touching hardware) and is therefore NOT on the default
+# autoload path. This example config adds the examples plugin directory so the
+# demo devices appear, for development, testing, and evaluation only.
+#
+# To use it, point the daemon at this file, e.g.:
+#
+#   LUMINATED_CONFIG=@EXAMPLE_CONFIG_PATH@ luminated
+#
+# Do not use this configuration in production.
+#
+# Rendered by packaging/install-linux.sh from the same build-time install paths as
+# the default config.
+
+socket_path = "@SOCKET_PATH@"
+state_path = "@STATE_PATH@"
+
+plugin_dirs = [
+  "@PLUGIN_DIR_EXAMPLES@",
+  "@PLUGIN_DIR_LOCAL@",
+  "@PLUGIN_DIR_SYSTEM@",
+]
+
+[plugin_management]
+activation = "host-attached"

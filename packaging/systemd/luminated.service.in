@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+[Unit]
+Description=Luminate lighting daemon
+Documentation=man:luminated(8)
+After=systemd-udevd.service
+
+[Service]
+Type=simple
+User=@LUMINATE_USER@
+Group=@LUMINATE_GROUP@
+UMask=0007
+
+# These commands intentionally run with elevated service privileges while the
+# daemon itself runs as the unprivileged luminated user. This keeps first-boot
+# directory creation independent of tmpfiles ordering and still gives the
+# daemon only the filesystem/device access it needs.
+ExecStartPre=+/usr/bin/install -d -m 0750 -o @LUMINATE_USER@ -g @LUMINATE_GROUP@ @RUNTIME_DIR@
+ExecStartPre=+/usr/bin/install -d -m 0750 -o @LUMINATE_USER@ -g @LUMINATE_GROUP@ @STATE_DIR@
+
+ExecStart=@BINDIR@/luminated
+Restart=on-failure
+RestartSec=2s
+
+# Device access is granted by udev rules directly to @LUMINATE_USER@. The
+# socket is chmodded 0660 by luminated after bind and inherits the client group.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=@RUNTIME_DIR@ @STATE_DIR@
+# The local plugin dir is operator-managed and not created by the installer or
+# packages; prefix it with `-` so a clean install doesn't fail namespace setup
+# on a missing mount source before ExecStart.
+ReadOnlyPaths=@CONFIG_DIR@ -@PLUGIN_DIR_LOCAL@ @PLUGIN_DIR_SYSTEM@
+PrivateTmp=yes
+PrivateDevices=no
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+# Network lighting plugins require Internet sockets; local control and device
+# discovery additionally use Unix and netlink sockets.
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+RestrictNamespaces=yes
+SystemCallFilter=@system-service
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target

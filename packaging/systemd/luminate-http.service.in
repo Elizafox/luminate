@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+[Unit]
+Description=Luminate HTTP API
+Documentation=https://github.com/Elizafox/luminate/blob/main/docs/development/http-api.md
+After=network.target luminated.service
+Wants=luminated.service
+
+[Service]
+Type=simple
+User=@LUMINATE_HTTP_USER@
+Group=@LUMINATE_GROUP@
+UMask=0077
+# Add deployment-specific TLS, origin, proxy, and resource-limit arguments with
+# a systemd drop-in which replaces ExecStart. See the HTTP API operator guide.
+ExecStart=@BINDIR@/luminate-http --listen @HTTP_LISTEN@ --socket-path @SOCKET_PATH@
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=2s
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+SystemCallFilter=@system-service
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target

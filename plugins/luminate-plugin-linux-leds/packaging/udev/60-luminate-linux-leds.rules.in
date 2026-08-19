@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# Grant the dedicated daemon account access only to standard keyboard-backlight
+# LED-class attributes. MODE/OWNER apply only to device nodes, so sysfs
+# attributes require short add-event helpers.
+ACTION=="add", SUBSYSTEM=="leds", KERNEL=="*:kbd_backlight", RUN+="/bin/chown @LUMINATE_USER@ /sys%p/brightness", RUN+="/bin/chmod 0600 /sys%p/brightness"
+ACTION=="add", SUBSYSTEM=="leds", KERNEL=="*:kbd_backlight", TEST=="multi_intensity", RUN+="/bin/chown @LUMINATE_USER@ /sys%p/multi_intensity", RUN+="/bin/chmod 0600 /sys%p/multi_intensity"
+ACTION=="add", SUBSYSTEM=="leds", KERNEL=="*:kbd_zoned_backlight-*", RUN+="/bin/chown @LUMINATE_USER@ /sys%p/brightness", RUN+="/bin/chmod 0600 /sys%p/brightness"
+ACTION=="add", SUBSYSTEM=="leds", KERNEL=="*:kbd_zoned_backlight-*", TEST=="multi_intensity", RUN+="/bin/chown @LUMINATE_USER@ /sys%p/multi_intensity", RUN+="/bin/chmod 0600 /sys%p/multi_intensity"

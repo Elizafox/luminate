@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# Maintainer: Elizabeth Kiara Regina Ashford <elizabeth.jennifer.myers@gmail.com>
+pkgname=luminate
+pkgver=0.1.0
+pkgrel=0
+pkgdesc="RGB lighting control daemon, client library, CLI, and native plugins"
+url="https://github.com/Elizafox/luminate"
+arch="x86_64 aarch64"
+license="GPL-3.0-or-later"
+depends="ca-certificates libgcc"
+subpackages="$pkgname-openrc"
+install="$pkgname.pre-install"
+backup="etc/luminate/luminated.toml"
+options="!check"
+
+# This lightweight recipe packages packaging/install-linux.sh's already-rendered
+# musl/OpenRC tree, matching the deb/rpm staging model. Set
+# LUMINATE_STAGE_ROOT when the stage is somewhere other than the smoke-test
+# default.
+package() {
+	local stage_root="${LUMINATE_STAGE_ROOT:-/opt/luminate-root}"
+
+	test -x "$stage_root/usr/bin/luminated"
+	test -x "$stage_root/etc/init.d/luminated"
+	test ! -e "$stage_root/usr/lib/systemd"
+	mkdir -p "$pkgdir"
+	cp -a "$stage_root"/. "$pkgdir"/
+}
+
+openrc() {
+	pkgdesc="$pkgdesc (OpenRC service)"
+	depends="$pkgname=$pkgver-r$pkgrel openrc"
+	install="$subpkgname.pre-deinstall"
+	backup="etc/conf.d/luminated"
+
+	amove etc/init.d/luminated
+	amove etc/conf.d/luminated
+}

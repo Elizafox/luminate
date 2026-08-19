@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+d @HTTP_STATE_DIR@ 0700 @LUMINATE_HTTP_USER@ @LUMINATE_GROUP@ -

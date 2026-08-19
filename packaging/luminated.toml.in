@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# Default packaged luminated configuration.
+#
+# This file is rendered by packaging/install-linux.sh from build-time install paths.
+# Keep these paths in sync with the LUMINATE_DEFAULT_* values used for the
+# matching binary build.
+
+socket_path = "@SOCKET_PATH@"
+state_path = "@STATE_PATH@"
+
+plugin_dirs = [
+  "@PLUGIN_DIR_LOCAL@",
+  "@PLUGIN_DIR_SYSTEM@",
+]
+
+[plugin_management]
+activation = "host-attached"
+
+# Explicit plugin entries may be added by distributions or local admins when a
+# plugin should be activated regardless of automatic policy or required at
+# startup.
+#
+# On Linux RPM/DEB installs, the shipped native plugins include Alienware,
+# LIFX, Philips Hue, Govee, Linux LED-class, and WLED. Linux LED-class is
+# eligible for the default host-attached activation mode; the network plugins
+# need explicit entries if you want them active on startup.
+#
+# [[plugins]]
+# name = "demo-system"
+# required = false
+#
+# [[plugins]]
+# name = "luminate-plugin-govee"
+# required = false
+#
+# [[plugins]]
+# name = "luminate-plugin-wled"
+# required = false
+#
+# [[plugins]]
+# name = "luminate-plugin-philips-hue"
+# required = false
+# [plugins.config]
+# bridge_id = "001788fffe123456"
+# application_key = "replace-with-the-local-application-key"
+# mdns = true
+#
+# Plugin-defined settings belong to that explicit entry. They are delivered
+# privately to the supervised plugin host during initialization:
+# [plugins.config]
+# example_setting = true
+#
+# The bundled demo-system plugin exposes fake devices and is intentionally NOT
+# on the autoload path above. To exercise it in development/testing, run the
+# daemon against the shipped example config instead of this one:
+#
+#   LUMINATED_CONFIG=@EXAMPLE_CONFIG_PATH@ luminated

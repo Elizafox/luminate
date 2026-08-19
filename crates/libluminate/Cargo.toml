@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: LGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+[package]
+name = "libluminate"
+version = "0.1.0"
+edition.workspace = true
+license = "LGPL-3.0-or-later"
+repository.workspace = true
+rust-version.workspace = true
+description = "Stable Rust and C client library for the Luminate lighting daemon"
+
+[lib]
+name = "luminate"
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+thiserror.workspace = true
+serde.workspace = true
+ciborium.workspace = true
+tokio.workspace = true
+iceoryx2.workspace = true
+luminate-core.workspace = true
+luminate-host-supervisor.workspace = true
+luminate-platform.workspace = true
+luminate-protocol.workspace = true
+
+[dev-dependencies]
+# `test-util` (not part of tokio's `full`) enables the paused test clock used by
+# the I/O-deadline tests, which would otherwise have to wait the real timeout.
+tokio = { workspace = true, features = ["test-util"] }
+luminate-platform = { workspace = true, features = ["test-support"] }
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+# Used only by the interactive keyboard demos for safe event decoding and
+# exclusive input-device grabs.
+evdev = { version = "0.13.2", features = ["tokio"] }
+
+[lints]
+workspace = true

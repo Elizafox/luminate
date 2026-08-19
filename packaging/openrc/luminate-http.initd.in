@@ -1,0 +1,20 @@
+#!/sbin/openrc-run
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
+
+# shellcheck shell=sh disable=SC2034
+
+name="Luminate HTTP API"
+description="Luminate HTTP API"
+command="@BINDIR@/luminate-http"
+command_args="--listen ${luminate_http_listen:-@HTTP_LISTEN@} --socket-path @SOCKET_PATH@ ${luminate_http_options:-}"
+command_user="@LUMINATE_HTTP_USER@:@LUMINATE_GROUP@"
+command_background="yes"
+pidfile="/run/luminate-http.pid"
+umask="0077"
+retry="TERM/10/KILL/5"
+
+depend() {
+  need luminated
+  use net
+}
