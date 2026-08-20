@@ -98,8 +98,11 @@ pub struct ClientShmStreamReady {
 /// counterpart.
 #[derive(Default)]
 pub(super) struct ShmClientSubscriberRegistry {
-    node: OnceLock<Node<ipc_threadsafe::Service>>,
     streams: Mutex<HashMap<String, ActiveClientStream>>,
+
+    // Fields drop in declaration order. Active stream threads must release
+    // their ports before iceoryx2 removes the node directory.
+    node: OnceLock<Node<ipc_threadsafe::Service>>,
 }
 
 impl ShmClientSubscriberRegistry {

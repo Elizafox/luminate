@@ -61,6 +61,10 @@ pub(crate) struct FfiShmStream {
 
     publisher: Publisher<ipc_threadsafe::Service, [u8], ()>,
     notifier: Notifier<ipc_threadsafe::Service>,
+
+    // Fields drop in declaration order. Keep the node after its ports so
+    // iceoryx2 can remove every port tag before removing the node directory.
+    _node: Node<ipc_threadsafe::Service>,
 }
 
 /// Owned client-published shared-memory frame stream, returned by
@@ -71,6 +75,7 @@ pub struct LuminateShmFrameStream(pub(crate) FfiShmStream);
 type PublisherPorts = (
     Publisher<ipc_threadsafe::Service, [u8], ()>,
     Notifier<ipc_threadsafe::Service>,
+    Node<ipc_threadsafe::Service>,
 );
 
 /// Attaches to the two iceoryx2 services the daemon already created for
@@ -107,7 +112,7 @@ fn open_publisher(ready: &ShmStreamReady) -> Result<PublisherPorts, String> {
         .create()
         .map_err(|error| format!("creating shared-memory notifier: {error}"))?;
 
-    Ok((publisher, notifier))
+    Ok((publisher, notifier, node))
 }
 
 impl FfiShmStream {
@@ -136,7 +141,7 @@ pub(crate) fn create_ffi_shm_stream(
                 "negotiated shared-memory segment does not contain a whole packed frame".to_owned(),
             )
         })?;
-    let (publisher, notifier) = open_publisher(ready).map_err(Error::Io)?;
+    let (publisher, notifier, node) = open_publisher(ready).map_err(Error::Io)?;
 
     Ok(LuminateShmFrameStream(FfiShmStream {
         client,
@@ -148,6 +153,7 @@ pub(crate) fn create_ffi_shm_stream(
         sequence: 0,
         publisher,
         notifier,
+        _node: node,
     }))
 }
 
@@ -211,7 +217,7 @@ pub unsafe extern "C" fn luminate_client_begin_shm_frame_stream(
             return LuminateStatus::Protocol;
         };
 
-        let (publisher, notifier) = match open_publisher(&ready) {
+        let (publisher, notifier, node) = match open_publisher(&ready) {
             Ok(ports) => ports,
             Err(message) => {
                 // The daemon already accepted and stood up its half; tell it
@@ -237,6 +243,7 @@ pub unsafe extern "C" fn luminate_client_begin_shm_frame_stream(
             sequence: 0,
             publisher,
             notifier,
+            _node: node,
         };
         *out_stream = Box::into_raw(Box::new(LuminateShmFrameStream(stream)));
         clear_last_error();

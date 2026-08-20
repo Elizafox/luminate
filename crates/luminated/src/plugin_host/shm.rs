@@ -90,8 +90,11 @@ struct ActiveStream {
 /// this registry.
 #[derive(Default)]
 pub(super) struct ShmRuntime {
-    node: OnceLock<Node<ipc_threadsafe::Service>>,
     streams: RefCell<HashMap<String, ActiveStream>>,
+
+    // Fields drop in declaration order. Active stream threads must release
+    // their ports before iceoryx2 removes the node directory.
+    node: OnceLock<Node<ipc_threadsafe::Service>>,
 }
 
 impl ShmRuntime {

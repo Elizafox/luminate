@@ -12,7 +12,10 @@ use crate::ffi::{luminate_client_connect_path, luminate_client_free};
 use crate::ffi_typed::test_support::{FakeDaemon, respond};
 use luminate_protocol::{ErrorCode, OperationError, Request, ResponseStatus};
 
-fn create_shm_services(service_name: &str, event_service_name: &str) -> (impl Sized, impl Sized) {
+fn create_shm_services(
+    service_name: &str,
+    event_service_name: &str,
+) -> (impl Sized, impl Sized, impl Sized) {
     let node = luminate_host_supervisor::create_node().expect("create iceoryx2 node");
     let pubsub_name = ServiceName::new(service_name).expect("valid service name");
     let pubsub = node
@@ -39,7 +42,8 @@ fn create_shm_services(service_name: &str, event_service_name: &str) -> (impl Si
         .open_or_create()
         .expect("create event service");
     let listener = event.listener_builder().create().expect("create listener");
-    (subscriber, listener)
+    // Keep the node last so both ports remove their tags before node cleanup.
+    (subscriber, listener, node)
 }
 
 /// The successful same-uid `BeginShmFrameStream` negotiation has a dedicated
@@ -119,7 +123,8 @@ async fn shm_frame_stream_round_trips_through_live_services() {
     let id = NEXT_SHM_SERVICE.fetch_add(1, Ordering::Relaxed);
     let service_name = format!("luminate-ffi-shm-pub-{}-{id}", process::id());
     let event_service_name = format!("luminate-ffi-shm-event-{}-{id}", process::id());
-    let (_subscriber, _event_listener) = create_shm_services(&service_name, &event_service_name);
+    let (subscriber, event_listener, node) =
+        create_shm_services(&service_name, &event_service_name);
     let server_service_name = service_name.clone();
     let server_event_name = event_service_name.clone();
     let server = tokio::spawn(async move {
@@ -194,6 +199,10 @@ async fn shm_frame_stream_round_trips_through_live_services() {
     }
 
     server.await.expect("shm server task");
+
+    drop(subscriber);
+    drop(event_listener);
+    drop(node);
 }
 
 static NEXT_SHM_SERVICE: AtomicU64 = AtomicU64::new(0);

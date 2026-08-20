@@ -70,8 +70,11 @@ struct ActiveShmStream {
 /// namespaced by plugin name.
 #[derive(Default)]
 pub(super) struct ShmPublisherRegistry {
-    node: OnceLock<Node<ipc_threadsafe::Service>>,
     streams: Mutex<HashMap<String, ActiveShmStream>>,
+
+    // Fields drop in declaration order. The node must outlive every port in
+    // `streams` so iceoryx2 can remove their tags before its node directory.
+    node: OnceLock<Node<ipc_threadsafe::Service>>,
 }
 
 impl ShmPublisherRegistry {

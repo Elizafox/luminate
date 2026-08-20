@@ -25,7 +25,7 @@ ready but cannot be completed by ordinary hermetic CI alone.
       plugin set and make support claims evidence-based.
 - [ ] Finish supported-platform packaging: Windows MSI packaging, macOS CI,
       and signed/notarized macOS distribution.
-- [ ] Investigate iceoryx2 cleanup warnings when running the tests.
+- [x] Investigate and fix iceoryx2 cleanup warnings when running the tests.
 - [ ] Add a rate-limiting system for clients.
 
 ### HTTP LAN security
