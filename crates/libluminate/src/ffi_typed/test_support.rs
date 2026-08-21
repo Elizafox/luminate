@@ -26,7 +26,17 @@ pub(super) struct FakeDaemon {
 impl FakeDaemon {
     pub(super) fn bind(label: &str) -> Self {
         let directory = TestDir::new(label);
+        #[cfg(not(windows))]
         let path = directory.join("daemon");
+        // Windows derives the named-pipe name from the configured path's file
+        // stem. Keep that stem unique so parallel fake daemons do not all try
+        // to claim `\\.\pipe\daemon`.
+        #[cfg(windows)]
+        let path = directory.join(
+            directory
+                .file_name()
+                .expect("typed FFI test directory has a file name"),
+        );
         let listener = Listener::bind(&Address::from_configured_path(&path))
             .expect("bind typed FFI fake daemon");
         Self {
