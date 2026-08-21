@@ -177,11 +177,12 @@ fn real_socket_identity_owner_validation_and_cleanup_round_trip() {
     let listener = StdUnixListener::bind(&path).expect("bind unix socket");
     validate_socket_parent_owner(&path).expect("socket and parent should share an owner");
     let identity = SocketIdentity::from_path(&path).expect("capture socket identity");
-    drop(listener);
     remove_owned_socket(&path, identity).expect("remove owned socket");
     assert!(!path.exists());
     remove_owned_socket(&path, identity).expect("missing owned socket is already clean");
 
+    // Keep the original socket open, as Listener::drop does while checking
+    // the path. Otherwise its freed inode may be reused for the replacement.
     let replacement = StdUnixListener::bind(&path).expect("bind replacement unix socket");
     let replacement_identity =
         SocketIdentity::from_path(&path).expect("capture replacement identity");
@@ -191,6 +192,7 @@ fn real_socket_identity_owner_validation_and_cleanup_round_trip() {
     assert!(error.to_string().contains("replaced socket path"));
     drop(replacement);
     remove_owned_socket(&path, replacement_identity).expect("remove replacement socket");
+    drop(listener);
     fs::remove_dir(runtime_dir).expect("remove runtime directory");
 }
 
