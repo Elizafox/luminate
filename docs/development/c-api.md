@@ -610,9 +610,9 @@ LuminateStatus submitted = luminate_client_ping_async(
 Here `signal_completion` and `destroy_completion` stand for the application's
 own thread-safe notification and cleanup functions. Check `submitted` before
 waiting: on submission failure the application still owns `completion`, and
-neither consumer function will run. The complete C11 example in
-`crates/libluminate/examples/async.c` includes the mutex and condition-variable
-plumbing and is compiled and run by the C API smoke suite.
+neither consumer function will run. The complete POSIX C11 example in
+`crates/libluminate/examples/async.c` includes the pthread mutex and
+condition-variable plumbing and is compiled and run by the C API smoke suite.
 
 Owned results transfer through the callback rather than borrowing storage from
 the operation. Move the pointer into consumer-owned state and eventually use

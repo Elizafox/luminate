@@ -275,6 +275,7 @@ fn run_header_consumer(name: &str, source: &str, language: Language, standard: &
         .arg("-Wall")
         .arg("-Wextra")
         .arg("-Werror")
+        .arg("-pthread")
         .arg("-I")
         .arg(&manifest_dir)
         .arg(&source_path)

@@ -4,14 +4,14 @@
 #include "luminate.h"
 
 #include <assert.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <string.h>
-#include <threads.h>
 
 typedef struct Completion
 {
-    mtx_t mutex;
-    cnd_t changed;
+    pthread_mutex_t mutex;
+    pthread_cond_t changed;
     bool done;
     LuminateStatus status;
     void *payload;
@@ -25,8 +25,8 @@ static bool view_equal(LuminateStringView view, const char *expected)
 
 static void completion_initialize(Completion *completion)
 {
-    assert(mtx_init(&completion->mutex, mtx_plain) == thrd_success);
-    assert(cnd_init(&completion->changed) == thrd_success);
+    assert(pthread_mutex_init(&completion->mutex, NULL) == 0);
+    assert(pthread_cond_init(&completion->changed, NULL) == 0);
     completion->done = false;
     completion->status = LUMINATE_STATUS_INTERNAL;
     completion->payload = NULL;
@@ -34,37 +34,37 @@ static void completion_initialize(Completion *completion)
 
 static void completion_publish(Completion *completion, LuminateStatus status, void *payload)
 {
-    assert(mtx_lock(&completion->mutex) == thrd_success);
+    assert(pthread_mutex_lock(&completion->mutex) == 0);
     completion->status = status;
     completion->payload = payload;
     completion->done = true;
-    assert(cnd_signal(&completion->changed) == thrd_success);
-    assert(mtx_unlock(&completion->mutex) == thrd_success);
+    assert(pthread_cond_signal(&completion->changed) == 0);
+    assert(pthread_mutex_unlock(&completion->mutex) == 0);
 }
 
 static void completion_wait(Completion *completion)
 {
-    assert(mtx_lock(&completion->mutex) == thrd_success);
+    assert(pthread_mutex_lock(&completion->mutex) == 0);
     while (!completion->done)
     {
-        assert(cnd_wait(&completion->changed, &completion->mutex) == thrd_success);
+        assert(pthread_cond_wait(&completion->changed, &completion->mutex) == 0);
     }
-    assert(mtx_unlock(&completion->mutex) == thrd_success);
+    assert(pthread_mutex_unlock(&completion->mutex) == 0);
 }
 
 static void completion_reset(Completion *completion)
 {
-    assert(mtx_lock(&completion->mutex) == thrd_success);
+    assert(pthread_mutex_lock(&completion->mutex) == 0);
     completion->done = false;
     completion->status = LUMINATE_STATUS_INTERNAL;
     completion->payload = NULL;
-    assert(mtx_unlock(&completion->mutex) == thrd_success);
+    assert(pthread_mutex_unlock(&completion->mutex) == 0);
 }
 
 static void completion_destroy(Completion *completion)
 {
-    cnd_destroy(&completion->changed);
-    mtx_destroy(&completion->mutex);
+    assert(pthread_cond_destroy(&completion->changed) == 0);
+    assert(pthread_mutex_destroy(&completion->mutex) == 0);
 }
 
 static void connected(void *context, const LuminateAsyncOperation *operation,

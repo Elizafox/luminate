@@ -5,7 +5,6 @@
 
 #include <assert.h>
 #include <stdbool.h>
-#include <threads.h>
 #include <time.h>
 
 static void no_context_free(void *context) { (void)context; }
@@ -152,7 +151,7 @@ static void wait_for_completion(LuminateAsyncOperation *operation)
         {
             break;
         }
-        thrd_sleep(&delay, NULL);
+        nanosleep(&delay, NULL);
     }
     assert(complete);
     (void)status;
@@ -185,7 +184,7 @@ int main(int argc, char **argv)
     for (unsigned int attempt = 0; attempt < 20; ++attempt)
     {
         (void)attempt;
-        assert(thrd_sleep(&spin_delay, NULL) == 0);
+        assert(nanosleep(&spin_delay, NULL) == 0);
     }
     const LuminateAsyncCancelResult cancel_result = luminate_async_operation_cancel(operation);
     assert(cancel_result == LUMINATE_ASYNC_CANCEL_ACCEPTED ||

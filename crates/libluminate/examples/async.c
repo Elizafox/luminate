@@ -3,14 +3,14 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <threads.h>
+#include <pthread.h>
 
 #include "luminate.h"
 
 struct Completion
 {
-    mtx_t mutex;
-    cnd_t changed;
+    pthread_mutex_t mutex;
+    pthread_cond_t changed;
     int context_destroyed;
     LuminateStatus status;
 };
@@ -26,19 +26,19 @@ static void ping_complete(void *raw_context, const LuminateAsyncOperation *opera
         abort();
     }
 
-    mtx_lock(&completion->mutex);
+    pthread_mutex_lock(&completion->mutex);
     completion->status = status;
-    mtx_unlock(&completion->mutex);
+    pthread_mutex_unlock(&completion->mutex);
 }
 
 static void completion_free(void *raw_context)
 {
     struct Completion *completion = raw_context;
 
-    mtx_lock(&completion->mutex);
+    pthread_mutex_lock(&completion->mutex);
     completion->context_destroyed = 1;
-    cnd_signal(&completion->changed);
-    mtx_unlock(&completion->mutex);
+    pthread_cond_signal(&completion->changed);
+    pthread_mutex_unlock(&completion->mutex);
 }
 
 int main(int argc, char **argv)
@@ -47,8 +47,8 @@ int main(int argc, char **argv)
     LuminateAsyncOperation *operation = NULL;
     struct Completion completion = {0};
 
-    if (mtx_init(&completion.mutex, mtx_plain) != thrd_success ||
-        cnd_init(&completion.changed) != thrd_success)
+    if (pthread_mutex_init(&completion.mutex, NULL) != 0 ||
+        pthread_cond_init(&completion.changed, NULL) != 0)
     {
         return EXIT_FAILURE;
     }
@@ -73,13 +73,13 @@ int main(int argc, char **argv)
     /* The accepted operation keeps its client execution domain alive. */
     luminate_client_free(client);
 
-    mtx_lock(&completion.mutex);
+    pthread_mutex_lock(&completion.mutex);
     while (!completion.context_destroyed)
     {
-        cnd_wait(&completion.changed, &completion.mutex);
+        pthread_cond_wait(&completion.changed, &completion.mutex);
     }
     status = completion.status;
-    mtx_unlock(&completion.mutex);
+    pthread_mutex_unlock(&completion.mutex);
 
     if (status != LUMINATE_STATUS_OK)
     {
@@ -88,7 +88,7 @@ int main(int argc, char **argv)
     }
 
     luminate_async_operation_release(operation);
-    cnd_destroy(&completion.changed);
-    mtx_destroy(&completion.mutex);
+    pthread_cond_destroy(&completion.changed);
+    pthread_mutex_destroy(&completion.mutex);
     return status == LUMINATE_STATUS_OK ? EXIT_SUCCESS : EXIT_FAILURE;
 }
