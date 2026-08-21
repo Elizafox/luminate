@@ -1447,31 +1447,18 @@ fn wait_for_log_contains(log_path: &Path, needle: &str) {
 }
 
 async fn assert_dbus_topology(adapter_log: &Path) {
-    let connection = zbus::Connection::session()
+    let connection = wait_for_service(adapter_log).await;
+    let managed = ObjectManagerProxy::builder(&connection)
+        .destination(DESTINATION)
+        .expect("valid destination")
+        .path(ROOT)
+        .expect("valid ObjectManager path")
+        .build()
         .await
-        .expect("connect to private D-Bus session");
-    let deadline = Instant::now() + WAIT_TIMEOUT;
-    let managed = loop {
-        let proxy = ObjectManagerProxy::builder(&connection)
-            .destination(DESTINATION)
-            .expect("valid destination")
-            .path(ROOT)
-            .expect("valid ObjectManager path")
-            .build()
-            .await;
-        if let Ok(proxy) = proxy
-            && let Ok(objects) = proxy.get_managed_objects().await
-            && !objects.is_empty()
-        {
-            break objects;
-        }
-        assert!(
-            Instant::now() < deadline,
-            "timed out waiting for demo topology; adapter log:\n{}",
-            fs::read_to_string(adapter_log).unwrap_or_default()
-        );
-        sleep(POLL_INTERVAL).await;
-    };
+        .expect("build ObjectManager proxy")
+        .get_managed_objects()
+        .await
+        .expect("enumerate demo topology");
 
     assert_demo_objects(&managed);
     let manager_proxy = zbus::Proxy::new(

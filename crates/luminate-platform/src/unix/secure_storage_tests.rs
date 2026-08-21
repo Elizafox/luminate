@@ -83,8 +83,9 @@ fn private_read_rejects_a_fifo_without_blocking() {
     let root = TestDir::new("secure-storage-fifo");
     let path = root.join("authority.fifo");
     let path_bytes = CString::new(path.as_os_str().as_bytes()).expect("path without NUL");
+    let mode = libc::mode_t::try_from(PRIVATE_FILE_MODE).expect("private file mode fits mode_t");
     // SAFETY: `path_bytes` is NUL-terminated and remains alive for this call.
-    let result = unsafe { libc::mkfifo(path_bytes.as_ptr(), PRIVATE_FILE_MODE) };
+    let result = unsafe { libc::mkfifo(path_bytes.as_ptr(), mode) };
     assert_eq!(result, 0, "mkfifo failed: {}", io::Error::last_os_error());
 
     let error = open_private_file_for_read(&path).expect_err("FIFO must be rejected");
