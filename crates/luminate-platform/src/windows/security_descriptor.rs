@@ -10,10 +10,9 @@
 //! owner-only, while service pipes additionally admit administrators and one
 //! configured client principal. Keeping both postures here prevents their
 //! security-sensitive access masks and ACE ordering from drifting apart.
-//! An exact-string owner-only DACL mismatch always errors, so a formatting
-//! quirk this code doesn't anticipate can only ever cause a spurious rejection,
-//! never a false pass; deliberately safe to be overly strict here, unlike the
-//! reverse.
+//! Owner-only DACLs are compared after Windows renders both descriptors into
+//! canonical SDDL. This preserves exact comparison while accounting for
+//! well-known SID aliases such as `LA` for the local Administrator account.
 //!
 //! [`grant_process_query_access`] is the one function here that edits
 //! existing DACLs by ACE rather than constructing one from SDDL: unlike a
@@ -278,7 +277,7 @@ pub fn protect_machine_data_root(path: &Path) -> io::Result<()> {
 
 /// Reads back the DACL Windows actually attached to the filesystem object at
 /// `path` and renders it as an SDDL string, for comparison against the
-/// fixed owner-only SDDL string this module ever writes.
+/// canonical owner-only descriptor this module writes.
 #[allow(
     unsafe_code,
     reason = "GetNamedSecurityInfoW and ConvertSecurityDescriptorToStringSecurityDescriptorW are \
@@ -342,6 +341,42 @@ fn read_dacl_sddl(path: &Path) -> io::Result<String> {
     Ok(sddl)
 }
 
+/// Renders the expected owner-only descriptor through the same Windows API
+/// used for an object's actual DACL. Windows may replace a well-known SID
+/// with its SDDL alias while rendering, so comparing against the input text
+/// would reject an otherwise identical descriptor.
+#[allow(
+    unsafe_code,
+    reason = "ConvertSecurityDescriptorToStringSecurityDescriptorW is a Win32 API with no safe \
+              standard-library wrapper; the descriptor and output allocation remain guarded for \
+              the complete conversion."
+)]
+fn canonical_owner_only_sddl(owner_sid: &str) -> io::Result<String> {
+    let (attributes, _descriptor_guard) = security_attributes(&owner_only_sddl(owner_sid))?;
+    let mut sddl_ptr: *mut u16 = ptr::null_mut();
+    // SAFETY: `attributes.lpSecurityDescriptor` remains valid through
+    // `_descriptor_guard`; `sddl_ptr` is a local out-parameter.
+    let ok = unsafe {
+        ConvertSecurityDescriptorToStringSecurityDescriptorW(
+            attributes.lpSecurityDescriptor,
+            SDDL_REVISION_1,
+            DACL_SECURITY_INFORMATION,
+            &raw mut sddl_ptr,
+            ptr::null_mut(),
+        )
+    };
+    if ok == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    let sddl_guard = LocalAllocGuard(sddl_ptr.cast::<c_void>());
+    // SAFETY: the successful conversion returned a NUL-terminated string
+    // which remains alive through `sddl_guard`.
+    let sddl = unsafe { wide_string_from_nul_terminated(sddl_ptr) };
+
+    drop(sddl_guard);
+    Ok(sddl)
+}
+
 /// Verifies `path`'s DACL grants access to the current user only, erroring
 /// if it grants anything to anyone else. Deliberately does not attempt to
 /// repair a mismatched DACL: an unexpectedly permissive directory or file
@@ -350,7 +385,7 @@ fn read_dacl_sddl(path: &Path) -> io::Result<String> {
 /// re-`chmod` an existing directory.
 pub(crate) fn verify_private(path: &Path) -> io::Result<()> {
     let owner_sid = current_process_sid()?;
-    let expected = owner_only_sddl(&owner_sid);
+    let expected = canonical_owner_only_sddl(&owner_sid)?;
     let actual = read_dacl_sddl(path)?;
     if actual != expected {
         return Err(io::Error::new(
@@ -434,7 +469,7 @@ pub(crate) fn verify_private_handle(handle: HANDLE, path: &Path) -> io::Result<(
     // SAFETY: the successful conversion returned a NUL-terminated string
     // which remains alive through `sddl_guard`.
     let actual = unsafe { wide_string_from_nul_terminated(sddl_ptr) };
-    let expected = owner_only_sddl(&owner_sid);
+    let expected = canonical_owner_only_sddl(&owner_sid)?;
     if actual != expected {
         return Err(io::Error::new(
             io::ErrorKind::PermissionDenied,
