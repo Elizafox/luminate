@@ -13,7 +13,7 @@
 
 use std::fs::File;
 use std::io;
-use std::os::windows::io::FromRawHandle as _;
+use std::os::windows::io::{AsRawHandle as _, FromRawHandle as _};
 use std::path::Path;
 use std::ptr;
 
@@ -23,8 +23,8 @@ use windows_sys::Win32::Foundation::{
 use windows_sys::Win32::Storage::FileSystem::{
     BY_HANDLE_FILE_INFORMATION, CREATE_NEW, CreateDirectoryW, CreateFileW, FILE_APPEND_DATA,
     FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_REPARSE_POINT,
-    FILE_FLAG_OPEN_REPARSE_POINT, FILE_SHARE_MODE, FILE_SHARE_READ, GetFileInformationByHandle,
-    OPEN_ALWAYS, OPEN_EXISTING, READ_CONTROL,
+    FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT, FILE_SHARE_MODE, FILE_SHARE_READ,
+    GetFileInformationByHandle, OPEN_ALWAYS, OPEN_EXISTING, READ_CONTROL,
 };
 
 use crate::windows::security_descriptor::{
@@ -181,7 +181,6 @@ pub fn open_private_file_for_read(path: &Path) -> io::Result<File> {
             format!("{} is not a regular file", path.display()),
         ));
     }
-    use std::os::windows::io::AsRawHandle as _;
     verify_private_handle(file.as_raw_handle().cast(), path)?;
     Ok(file)
 }
@@ -197,10 +196,12 @@ pub fn open_private_file_for_read(path: &Path) -> io::Result<File> {
 pub fn open_existing_file_without_following_symlinks(path: &Path) -> io::Result<File> {
     let wide_path = to_wide(&path.display().to_string());
 
-    // `FILE_FLAG_OPEN_REPARSE_POINT` opens a reparse point (which a
-    // symlink is) as itself rather than transparently following it into
-    // its target, mirroring `O_NOFOLLOW`'s refusal to follow a symlink on
-    // Unix.
+    // `FILE_FLAG_OPEN_REPARSE_POINT` opens a reparse point (which a symlink
+    // is) as itself rather than transparently following it into its target,
+    // mirroring `O_NOFOLLOW`'s refusal to follow a symlink on Unix.
+    // `FILE_FLAG_BACKUP_SEMANTICS` permits opening a directory long enough to
+    // inspect and reject it explicitly instead of surfacing a misleading
+    // access-denied error from `CreateFileW`.
     // SAFETY: `wide_path` is valid for the duration of this call; no
     // security attributes or template handle are supplied.
     let handle = unsafe {
@@ -210,7 +211,7 @@ pub fn open_existing_file_without_following_symlinks(path: &Path) -> io::Result<
             FILE_SHARE_READ,
             ptr::null(),
             OPEN_EXISTING,
-            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT,
+            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
             ptr::null_mut(),
         )
     };

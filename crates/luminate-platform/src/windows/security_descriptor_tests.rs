@@ -12,6 +12,14 @@ fn owner_only_descriptor_has_one_full_access_ace() {
 }
 
 #[test]
+fn owner_only_creation_descriptor_sets_the_explicit_owner() {
+    assert_eq!(
+        owner_only_creation_sddl("S-1-5-21-1234"),
+        "O:S-1-5-21-1234D:P(A;;FA;;;S-1-5-21-1234)"
+    );
+}
+
+#[test]
 fn service_pipe_descriptor_has_canonical_ace_order_and_restricted_client_access() {
     assert_eq!(SERVICE_PIPE_CLIENT_ACCESS & FILE_CREATE_PIPE_INSTANCE, 0);
     assert_eq!(

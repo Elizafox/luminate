@@ -31,7 +31,7 @@ use luminate_platform::default_path::{default_socket_path, event_socket_path};
 use luminate_platform::transport::{Address, Connection, connect};
 
 use luminate_core::policy::{PolicyDocument, PolicyRevision, PrincipalId, SessionScope};
-#[cfg(test)]
+#[cfg(all(test, unix))]
 use luminate_protocol::EventTicket;
 use luminate_protocol::{
     Authentication, AuthenticationRequest, AuthenticationResponse, ClientHello, Compatibility,
@@ -44,7 +44,7 @@ use luminate_protocol::{
     AuthenticationSource, SessionMetadata as WireSessionMetadata, TokenMetadata,
 };
 use luminate_protocol::{EVENT_PROTOCOL_VERSION, PROTOCOL_ABI_VERSION};
-#[cfg(test)]
+#[cfg(all(test, unix))]
 use luminate_protocol::{PluginSetupWorkflow, PluginSetupWorkflowKind};
 
 use crate::error::{Error, Result};

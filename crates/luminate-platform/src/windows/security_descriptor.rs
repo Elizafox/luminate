@@ -91,6 +91,13 @@ fn owner_only_sddl(owner_sid: &str) -> String {
     format!("D:P(A;;FA;;;{owner_sid})")
 }
 
+/// The owner-only creation descriptor explicitly names its owner because an
+/// elevated token may otherwise default new objects to the Administrators
+/// group rather than the current user.
+fn owner_only_creation_sddl(owner_sid: &str) -> String {
+    format!("O:{owner_sid}{}", owner_only_sddl(owner_sid))
+}
+
 /// The service named-pipe DACL: full access for the service identity and
 /// administrators, and read/write access without pipe-instance creation for
 /// the configured client principal.
@@ -170,7 +177,7 @@ fn security_attributes(sddl: &str) -> io::Result<(SECURITY_ATTRIBUTES, LocalAllo
 pub(crate) fn owner_only_security_attributes() -> io::Result<(SECURITY_ATTRIBUTES, LocalAllocGuard)>
 {
     let owner_sid = current_process_sid()?;
-    security_attributes(&owner_only_sddl(&owner_sid))
+    security_attributes(&owner_only_creation_sddl(&owner_sid))
 }
 
 /// Builds security attributes for a service named pipe. The service and

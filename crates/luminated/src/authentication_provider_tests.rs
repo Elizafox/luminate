@@ -21,8 +21,10 @@ use luminate_platform::test_support::TestDir;
 #[cfg(unix)]
 use luminate_protocol::AUTHENTICATION_PROVIDER_PROTOCOL_VERSION;
 #[cfg(unix)]
+use luminate_protocol::Continuation;
+use luminate_protocol::Credential;
+#[cfg(unix)]
 use luminate_protocol::framing;
-use luminate_protocol::{Continuation, Credential};
 #[cfg(unix)]
 use luminate_protocol::{
     ProviderHello, ProviderHelloResponse, ProviderIdentity, ProviderRequest, ProviderResponse,
@@ -47,6 +49,7 @@ fn credential(value: &str) -> Credential {
     Credential::new(value).expect("valid bounded credential")
 }
 
+#[cfg(unix)]
 fn continuation(value: &str) -> Continuation {
     Continuation::new(value).expect("valid bounded continuation")
 }

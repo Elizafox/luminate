@@ -513,7 +513,7 @@ pub unsafe extern "C" fn luminate_client_connect(
 }
 
 mod builder;
-#[cfg(test)]
+#[cfg(all(test, unix))]
 use builder::*;
 
 /// Connects to a daemon socket at a specific path.
@@ -582,11 +582,11 @@ pub unsafe extern "C" fn luminate_client_free(client: *mut LuminateClient) {
 }
 
 mod events;
-#[cfg(test)]
+#[cfg(all(test, unix))]
 use events::*;
 
 mod operations;
-#[cfg(test)]
+#[cfg(all(test, unix))]
 use operations::*;
 
 /// Releases string memory allocated by libluminate.

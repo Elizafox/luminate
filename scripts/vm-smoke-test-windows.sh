@@ -127,6 +127,7 @@ ssh_guest "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Co
   \$ErrorActionPreference = 'Stop'; \
   Set-Location -LiteralPath '${remote_workspace}'; \
   \$env:CARGO_TARGET_DIR = Join-Path \$env:USERPROFILE '.cache\\luminate-windows-smoke-target'; \
+  New-Item -ItemType Directory -Path \$env:CARGO_TARGET_DIR -Force | Out-Null; \
   Remove-Item -LiteralPath 'target' -Recurse -Force -ErrorAction SilentlyContinue; \
   New-Item -ItemType Junction -Path 'target' -Target \$env:CARGO_TARGET_DIR | Out-Null; \
   & '.\\scripts\\smoke-test-windows.ps1' -Privileged; \

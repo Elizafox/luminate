@@ -20,9 +20,10 @@
 )]
 
 #[cfg(windows)]
-use std::io;
-#[cfg(windows)]
 use std::process::ExitCode;
+
+#[cfg(windows)]
+use luminate_platform::terminal::escape;
 
 #[cfg(windows)]
 #[tokio::main]
@@ -30,10 +31,7 @@ async fn main() -> ExitCode {
     match windows_impl::run().await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!(
-                "{}",
-                luminate_platform::terminal::escape(&format!("error: {error}"))
-            );
+            eprintln!("{}", escape(&format!("error: {error}")));
             ExitCode::FAILURE
         }
     }

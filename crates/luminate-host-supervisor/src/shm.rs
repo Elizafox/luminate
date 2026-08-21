@@ -19,6 +19,8 @@ use iceoryx2::node::{Node, NodeBuilder, NodeCreationFailure};
 use iceoryx2::prelude::{Path as IceoryxPath, SemanticString as _, SemanticStringError};
 use iceoryx2::service::ipc_threadsafe;
 use iceoryx2::service::service_name::{ServiceName, ServiceNameError};
+#[cfg(windows)]
+use luminate_platform::windows::current_user_local_data_directory;
 
 /// Service names for a shared-memory frame stream.
 ///
@@ -195,9 +197,8 @@ fn node_config() -> Result<Config, NodeCreationError> {
 /// `%ProgramData%`, not a return to `C:\Temp`.
 #[cfg(windows)]
 fn node_config() -> Result<Config, NodeCreationError> {
-    let base = luminate_platform::windows::current_user_local_data_directory()
-        .map_err(|_| NodeCreationError::NoPerUserBase)?;
-    let root_path = PathBuf::from(base).join("luminate").join("iceoryx2");
+    let base = current_user_local_data_directory().map_err(|_| NodeCreationError::NoPerUserBase)?;
+    let root_path = base.join("luminate").join("iceoryx2");
 
     let encoded =
         IceoryxPath::new(root_path.display().to_string().as_bytes()).map_err(|source| {

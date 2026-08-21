@@ -279,6 +279,11 @@ fn validate_private_file_access(metadata: &fs::Metadata) -> anyhow::Result<()> {
 }
 
 #[cfg(not(unix))]
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "signature matches the fallible Unix permission check used by the shared caller; on \
+              Windows open_private_file_for_read verifies the file's DACL instead"
+)]
 fn validate_private_file_access(_metadata: &fs::Metadata) -> anyhow::Result<()> {
     Ok(())
 }
@@ -390,6 +395,7 @@ mod tests {
         BoundedListener, Connection, TlsFiles, bounded_tls_handshake, load_certified_key,
         validate_leaf_certificate,
     };
+    use luminate_platform::secure_storage::create_private_file;
     use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
     use rustls::crypto::aws_lc_rs::default_provider;
     use rustls::pki_types::{ServerName, UnixTime};
@@ -400,6 +406,7 @@ mod tests {
     use std::env;
     use std::fs;
     use std::future;
+    use std::io::Write as _;
     use std::path::{Path, PathBuf};
     use std::sync::{Arc, RwLock};
     use std::time::{Duration, UNIX_EPOCH};
@@ -666,18 +673,8 @@ mod tests {
         let certificate_path = directory.join("certificate.pem");
         let key_path = directory.join("key.pem");
         fs::write(&certificate_path, certificate).expect("write certificate");
-        fs::write(&key_path, key).expect("write key");
-        protect_test_key(&key_path);
+        let mut key_file = create_private_file(&key_path).expect("create protected key");
+        key_file.write_all(key).expect("write key");
         TlsFiles::new(certificate_path, key_path)
     }
-
-    #[cfg(unix)]
-    fn protect_test_key(path: &Path) {
-        use std::os::unix::fs::PermissionsExt as _;
-
-        fs::set_permissions(path, fs::Permissions::from_mode(0o600)).expect("protect key");
-    }
-
-    #[cfg(not(unix))]
-    fn protect_test_key(_path: &Path) {}
 }

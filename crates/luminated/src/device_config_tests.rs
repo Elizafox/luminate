@@ -428,7 +428,16 @@ fn load_errors_on_a_missing_file() {
 
 #[test]
 fn validates_external_authentication_provider_configuration() {
-    let valid: DaemonConfig = toml::from_str(
+    let valid_toml = if cfg!(windows) {
+        r#"
+[[authorization.authentication_providers]]
+name = "company-sso"
+authority = "company.example"
+executable = 'C:\Program Files\Luminate\luminate-auth-company.exe'
+initialization_file = 'C:\ProgramData\Luminate\company-sso.secret'
+max_sessions = 12
+"#
+    } else {
         r#"
 [[authorization.authentication_providers]]
 name = "company-sso"
@@ -436,9 +445,9 @@ authority = "company.example"
 executable = "/usr/libexec/luminate-auth-company"
 initialization_file = "/etc/luminate/company-sso.secret"
 max_sessions = 12
-"#,
-    )
-    .expect("parse authentication provider");
+"#
+    };
+    let valid: DaemonConfig = toml::from_str(valid_toml).expect("parse authentication provider");
     valid.validate().expect("validate authentication provider");
     let provider = &valid.authorization.authentication_providers[0];
     assert_eq!(provider.name, "company-sso");

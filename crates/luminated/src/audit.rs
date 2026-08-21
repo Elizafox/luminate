@@ -377,11 +377,14 @@ fn operation_name(operation: Operation) -> &'static str {
 mod tests {
     use luminate_core::device::DeviceId;
     use luminate_core::policy::Principal as SessionPrincipal;
+    use luminate_platform::test_support::TestDir;
     use std::collections::BTreeSet;
+    #[cfg(unix)]
     use std::env::temp_dir;
     use std::fs;
     #[cfg(unix)]
     use std::os::unix::fs::{PermissionsExt as _, symlink};
+    #[cfg(unix)]
     use uuid::Uuid;
 
     use super::{JsonLinesSink, Sink as _};
@@ -389,11 +392,7 @@ mod tests {
 
     #[test]
     fn audit_records_are_newline_delimited_and_do_not_contain_secrets() {
-        let directory = temp_dir().join(format!("luminate-audit-{}", Uuid::new_v4()));
-        fs::create_dir_all(&directory).expect("create audit directory");
-        #[cfg(unix)]
-        fs::set_permissions(&directory, fs::Permissions::from_mode(0o700))
-            .expect("make audit directory private");
+        let directory = TestDir::uncreated("audit");
         let path = directory.join("audit.jsonl");
         let sink = JsonLinesSink::open(&path).expect("open audit sink");
         let actor = Principal::Unix {
@@ -443,7 +442,6 @@ mod tests {
             "new audit file must not be accessible by group or others"
         );
         drop(sink);
-        let _ = fs::remove_dir_all(directory);
     }
 
     #[cfg(unix)]

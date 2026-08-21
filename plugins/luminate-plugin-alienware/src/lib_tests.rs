@@ -35,14 +35,24 @@ fn metadata_lists_every_supported_hid_identity() {
         ]
     );
     assert_eq!(HINTS.len(), 3);
-    assert_eq!(HINTS[0].value, KEYBOARD_HINT.as_ptr().cast());
-    assert_eq!(HINTS[1].value, AW_ELC_LEGACY_HINT.as_ptr().cast());
-    assert_eq!(HINTS[2].value, AW_ELC_M16_R2_HINT.as_ptr().cast());
+    assert_eq!(hint_value(&HINTS[0]), KEYBOARD_HINT);
+    assert_eq!(hint_value(&HINTS[1]), AW_ELC_LEGACY_HINT);
+    assert_eq!(hint_value(&HINTS[2]), AW_ELC_M16_R2_HINT);
     assert!(
         HINTS
             .iter()
             .all(|hint| hint.kind == ProbeHintKind::HidVidPid)
     );
+}
+
+#[allow(
+    unsafe_code,
+    reason = "the probe hints are built above from static C strings and remain valid for the test process"
+)]
+fn hint_value(hint: &PluginProbeHint) -> &CStr {
+    // SAFETY: every `HINTS` entry points to one of the static, NUL-terminated
+    // `CStr` constants declared by this module.
+    unsafe { CStr::from_ptr(hint.value) }
 }
 
 #[test]

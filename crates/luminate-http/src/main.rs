@@ -1489,6 +1489,11 @@ fn validate_private_credential_access(metadata: &fs::Metadata) -> anyhow::Result
 }
 
 #[cfg(not(unix))]
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "signature matches the fallible Unix permission check used by the shared caller; on \
+              Windows open_private_file_for_read verifies the file's DACL instead"
+)]
 fn validate_private_credential_access(_metadata: &fs::Metadata) -> anyhow::Result<()> {
     Ok(())
 }

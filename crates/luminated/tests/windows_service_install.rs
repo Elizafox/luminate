@@ -372,9 +372,10 @@ fn service_uninstall_while_running_stops_and_removes_the_service() {
         "uninstalling a running service should stop it first, then remove it: {}",
         stderr_text(&uninstall)
     );
-    assert!(
-        query_state().is_err(),
-        "service should no longer be registered"
+    wait_until(
+        || query_state().is_err(),
+        Duration::from_secs(10),
+        "waiting for the uninstalled service registration to clear",
     );
 }
 
