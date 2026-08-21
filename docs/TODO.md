@@ -23,8 +23,8 @@ ready but cannot be completed by ordinary hermetic CI alone.
       findings.
 - [ ] Expand real-world hardware testing enough to define the mature core
       plugin set and make support claims evidence-based.
-- [ ] Finish supported-platform packaging: Windows MSI packaging, macOS CI,
-      and signed/notarized macOS distribution.
+- [ ] Finish supported-platform packaging: Windows MSI packaging and
+      signed/notarized macOS distribution.
 - [x] Investigate and fix iceoryx2 cleanup warnings when running the tests.
 - [ ] Add a rate-limiting system for clients.
 
@@ -195,7 +195,7 @@ deferred investigations, not release tasks.
 
 ### macOS ([detailed plan](plans/macos-portability-plan.md))
 
-- [ ] Add automated Intel and Apple Silicon CI coverage equivalent to the
+- [x] Add automated Intel and Apple Silicon CI coverage equivalent to the
       existing manual contribution workflow.
 - [ ] Validate launchd `RunAtLoad` across a real reboot.
 - [ ] Exercise a real sleep/wake cycle and physical hotplug event end to end.
