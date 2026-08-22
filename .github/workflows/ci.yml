@@ -56,7 +56,9 @@ jobs:
 
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
-        run: brew install dbus llvm
+        run: |
+          brew untap aws/tap
+          brew install dbus llvm
 
       - name: Install Rust toolchain
         shell: bash
