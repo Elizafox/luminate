@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Elizabeth Kiara Regina Ashford
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "luminate.h"
 
 #include <assert.h>

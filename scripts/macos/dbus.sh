@@ -12,6 +12,11 @@ fi
 repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 cd "${repo_root}"
 
+# GitHub's macOS runners export this launchd variable with an empty value.
+# dbus-daemon interprets that as a malformed listen address instead of falling
+# back to the private session bus created by dbus-run-session.
+unset DBUS_LAUNCHD_SESSION_BUS_SOCKET
+
 printf '\n==> D-Bus process integration tests\n'
 dbus-run-session -- \
   cargo test -p luminate-dbus --features dbus --test dbus_integration -- --ignored --test-threads=1

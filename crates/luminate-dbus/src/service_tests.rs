@@ -960,7 +960,7 @@ fn introspection_contract_matches_snapshot() {
     xml.clear();
     append_topology_introspection(&mut contract, &mut xml);
 
-    let snapshot = include_str!("../testdata/introspection-contract.xml");
+    let snapshot = include_str!("../testdata/introspection-contract.xml").replace("\r\n", "\n");
     let (_, expected_contract) = snapshot
         .split_once("\n\n")
         .expect("the introspection snapshot has an SPDX header");
