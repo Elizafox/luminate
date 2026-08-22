@@ -20,11 +20,13 @@ use std::fs::{self, File};
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Mutex, OnceLock, PoisonError};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use luminate::policy::{Binding, PolicyRevision, Preset, materialize_presets};
+#[cfg(unix)]
+use luminate_platform::identity::daemon_own_uid;
 use luminate_platform::secure_storage::create_private_file;
 use luminate_platform::test_support::TestDir;
 #[cfg(windows)]
@@ -139,7 +141,9 @@ enum DemoTest {
 }
 
 fn run_demo_test(test_name: &str, test: DemoTest) {
-    let _guard = test_lock().lock().expect("lock poisoned");
+    // The lock only serializes tests that manipulate process-global D-Bus
+    // state. A failed test does not invalidate any state protected by it.
+    let _guard = test_lock().lock().unwrap_or_else(PoisonError::into_inner);
     if env::var_os("LUMINATE_DBUS_TEST_BUS").is_none() {
         run_on_private_bus(test_name);
         return;
@@ -1420,11 +1424,15 @@ fn target_path(
 fn caller_group() -> &'static str {
     static GROUP: OnceLock<String> = OnceLock::new();
     GROUP.get_or_init(|| {
-        fs::read_to_string("/proc/self/status")
-            .expect("read caller process status")
-            .lines()
-            .find_map(|line| line.strip_prefix("Groups:"))
-            .and_then(|groups| groups.split_whitespace().next())
+        let output = Command::new("id")
+            .arg("-G")
+            .output()
+            .expect("read caller process groups");
+        assert!(output.status.success(), "read caller process groups");
+        String::from_utf8(output.stdout)
+            .expect("caller process groups should be UTF-8")
+            .split_whitespace()
+            .next()
             .expect("caller should belong to a group")
             .to_owned()
     })
@@ -1670,12 +1678,7 @@ fn write_daemon_config(config: &Path, socket: &Path, state: &Path, plugin: &Path
 
 #[cfg(unix)]
 fn caller_identity() -> (String, String, String) {
-    use std::os::unix::fs::MetadataExt as _;
-
-    let uid = fs::metadata("/proc/self")
-        .expect("read caller process metadata")
-        .uid()
-        .to_string();
+    let uid = daemon_own_uid().to_string();
     (
         "unix".to_owned(),
         uid.clone(),
