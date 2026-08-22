@@ -5,6 +5,8 @@
 
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
+#[cfg(windows)]
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use luminate::Credential;
@@ -25,6 +27,9 @@ use crate::{
     AppState, AuthenticationBoundary, AuthenticationMode, DEFAULT_MAXIMUM_REQUEST_BYTES, rest,
     websocket,
 };
+
+#[cfg(windows)]
+static NEXT_MOCK_DAEMON_ID: AtomicU64 = AtomicU64::new(0);
 
 pub(crate) struct MockDaemon {
     pub(crate) state: AppState,
@@ -55,7 +60,14 @@ pub(crate) fn one_response(status: ResponseStatus) -> MockDaemon {
 
 pub(crate) fn scripted(connections: Vec<Vec<ResponseStatus>>) -> MockDaemon {
     let directory = TestDir::new("http-daemon");
+
+    #[cfg(windows)]
+    let instance = NEXT_MOCK_DAEMON_ID.fetch_add(1, Ordering::Relaxed);
+    #[cfg(windows)]
+    let path = directory.join(format!("luminated-{}-{instance}.sock", std::process::id()));
+    #[cfg(not(windows))]
     let path = directory.join("luminated.sock");
+
     let mut listener =
         Listener::bind(&Address::from_configured_path(&path)).expect("bind mock daemon");
     let task = tokio::spawn(async move {

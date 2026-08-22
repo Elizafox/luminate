@@ -9,14 +9,10 @@ if ! command -v dbus-run-session >/dev/null 2>&1; then
   exit 1
 fi
 
-repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+repo_root=$(CDPATH='' cd -- "${script_dir}/../.." && pwd)
 cd "${repo_root}"
 
-# GitHub's macOS runners export this launchd variable with an empty value.
-# dbus-daemon interprets that as a malformed listen address instead of falling
-# back to the private session bus created by dbus-run-session.
-unset DBUS_LAUNCHD_SESSION_BUS_SOCKET
-
 printf '\n==> D-Bus process integration tests\n'
-dbus-run-session -- \
+dbus-run-session --dbus-daemon="${script_dir}/private-dbus-daemon.sh" -- \
   cargo test -p luminate-dbus --features dbus --test dbus_integration -- --ignored --test-threads=1

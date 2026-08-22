@@ -140,7 +140,8 @@ fn openapi_contract_snapshot_is_current() {
             .expect("write snapshot");
         }
     }
-    assert_eq!(snapshot, include_str!("openapi-rest-v0.snapshot"));
+    let expected = include_str!("openapi-rest-v0.snapshot").replace("\r\n", "\n");
+    assert_eq!(snapshot, expected);
 }
 
 fn assert_schema_reference(schema: &serde_json::Value, context: &str) {
