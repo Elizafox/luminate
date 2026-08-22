@@ -14,5 +14,5 @@ repo_root=$(CDPATH='' cd -- "${script_dir}/../.." && pwd)
 cd "${repo_root}"
 
 printf '\n==> D-Bus process integration tests\n'
-dbus-run-session --dbus-daemon="${script_dir}/private-dbus-daemon.sh" -- \
+LUMINATE_DBUS_TEST_BUS=1 dbus-run-session --dbus-daemon="${script_dir}/private-dbus-daemon.sh" -- \
   cargo test -p luminate-dbus --features dbus --test dbus_integration -- --ignored --test-threads=1
