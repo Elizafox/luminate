@@ -24,7 +24,7 @@ use tokio::process::Command;
 use tokio::sync::{Mutex, RwLock};
 use tokio::time;
 use zbus::Connection;
-use zbus::fdo::DBusProxy;
+use zbus::fdo::{ConnectionCredentials, DBusProxy};
 use zbus::message::Header;
 use zbus::object_server::{Interface, SignalEmitter};
 use zbus::zvariant::{Error as ValueError, OwnedObjectPath, Type};
@@ -135,16 +135,11 @@ impl Shared {
             .await
             .map_err(|error| MethodError::PermissionDenied(error.to_string()))?;
 
-        let pid = credentials.process_id().ok_or_else(|| {
-            MethodError::PermissionDenied("D-Bus caller has no Unix process ID".into())
-        })?;
-
         let uid = credentials.unix_user_id().ok_or_else(|| {
             MethodError::PermissionDenied("D-Bus caller has no Unix user ID".into())
         })?;
 
-        let snapshot = auth::process_snapshot(&self.proc_root, pid, uid)
-            .map_err(|error| MethodError::PermissionDenied(error.to_string()))?;
+        let (pid, snapshot) = Self::caller_snapshot(&self.proc_root, &credentials, uid)?;
 
         if privileged {
             match Decision::decide(&snapshot.groups, self.required_gid, self.polkit) {
@@ -155,6 +150,11 @@ impl Shared {
                     ));
                 }
                 Decision::ConsultPolkit => {
+                    let pid = pid.ok_or_else(|| {
+                        MethodError::PermissionDenied(
+                            "D-Bus caller has no Unix process ID for Polkit authorization".into(),
+                        )
+                    })?;
                     let pkcheck_path = pkcheck_path();
                     authorize_with_polkit(
                         &pkcheck_path,
@@ -176,7 +176,10 @@ impl Shared {
 
         let administrator = self.client().await?;
         let sequence = self.attestation_sequence.fetch_add(1, Ordering::Relaxed);
-        let name = format!("dbus-{pid}-{sequence}");
+        let name = pid.map_or_else(
+            || format!("dbus-uid-{uid}-{sequence}"),
+            |pid| format!("dbus-{pid}-{sequence}"),
+        );
         let expiry = SystemTime::now().checked_add(ATTESTATION_LIFETIME);
         let subject = PrincipalId::new("unix", uid.to_string())
             .map_err(|error| MethodError::Internal(error.to_string()))?;
@@ -218,6 +221,36 @@ impl Shared {
             },
         );
         Ok(client)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    fn caller_snapshot(
+        proc_root: &Path,
+        credentials: &ConnectionCredentials,
+        uid: u32,
+    ) -> Result<(Option<u32>, auth::ProcessSnapshot), MethodError> {
+        let pid = credentials.process_id().ok_or_else(|| {
+            MethodError::PermissionDenied("D-Bus caller has no Unix process ID".into())
+        })?;
+        let snapshot = auth::process_snapshot(proc_root, pid, uid)
+            .map_err(|error| MethodError::PermissionDenied(error.to_string()))?;
+
+        Ok((Some(pid), snapshot))
+    }
+
+    // macOS D-Bus provides an authenticated UID but no process ID or group
+    // list. Resolve the local account groups without inventing a process
+    // identity that the bus cannot vouch for.
+    #[cfg(target_os = "macos")]
+    fn caller_snapshot(
+        _proc_root: &Path,
+        _credentials: &ConnectionCredentials,
+        uid: u32,
+    ) -> Result<(Option<u32>, auth::ProcessSnapshot), MethodError> {
+        let snapshot = auth::account_snapshot(uid)
+            .map_err(|error| MethodError::PermissionDenied(error.to_string()))?;
+
+        Ok((None, snapshot))
     }
 }
 

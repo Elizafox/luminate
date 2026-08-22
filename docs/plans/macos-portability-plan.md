@@ -322,13 +322,14 @@ Apple Silicon macOS; WLED and Govee still need real-device checks on a Mac.
 
 ### 8. `luminate-dbus` is an optional, unusual macOS configuration
 
-The crate remains Linux-oriented in its caller-identity internals
-(`/proc/<pid>/stat` and `/etc/group`) and is opt-in behind the `dbus` feature,
-off by default. D-Bus and Polkit can nevertheless be installed on macOS.
-`luminate-dbus` therefore searches the trusted Homebrew and system binary
-directories for `pkcheck` before falling back to Linux's conventional
-`/usr/bin/pkcheck`. A usable macOS deployment must also provide the process
-and group information those caller-identity checks require.
+The crate is opt-in behind the `dbus` feature and remains an unusual macOS
+configuration. macOS D-Bus exposes an authenticated caller UID but no process
+ID, so the bridge resolves that UID through the native account database rather
+than Linux procfs. Group authorization and daemon attestation work, while
+Polkit fallback fails closed because the bridge cannot construct a
+process-bound subject safely. The executable search still covers trusted
+Homebrew and system paths for configurations whose bus can provide the
+required process identity.
 
 ### 9. IPC transport: keep Unix domain sockets, not Mach IPC
 

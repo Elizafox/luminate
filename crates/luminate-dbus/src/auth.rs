@@ -5,7 +5,16 @@
 
 use std::fs;
 use std::io;
+#[cfg(target_os = "macos")]
+use std::mem::MaybeUninit;
 use std::path::Path;
+#[cfg(target_os = "macos")]
+use std::ptr;
+
+#[cfg(target_os = "macos")]
+const MAX_ACCOUNT_LOOKUP_BYTES: usize = 1024 * 1024;
+#[cfg(target_os = "macos")]
+const MAX_GROUPS: usize = 65_536;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProcessSnapshot {
@@ -39,6 +48,7 @@ pub fn polkit_process_subject(pid: u32, start_time: u64, uid: u32) -> String {
     format!("{pid},{start_time},{uid}")
 }
 
+#[cfg(any(test, not(target_os = "macos")))]
 pub fn process_snapshot(
     proc_root: &Path,
     pid: u32,
@@ -67,6 +77,102 @@ pub fn process_snapshot(
     Ok(ProcessSnapshot { start_time, groups })
 }
 
+/// Resolves the authenticated macOS user's complete account group list.
+///
+/// # Errors
+///
+/// Returns an error when the UID has no local account, native account lookup
+/// fails, or the returned group list cannot be represented safely.
+#[cfg(target_os = "macos")]
+#[allow(
+    unsafe_code,
+    reason = "getpwuid_r and getgrouplist are the native thread-safe account lookup APIs; all pointers refer to live storage for each call and returned pointers are not retained"
+)]
+pub(crate) fn account_snapshot(uid: u32) -> io::Result<ProcessSnapshot> {
+    // SAFETY: sysconf reads one process-wide configuration value and neither
+    // retains pointers nor accesses Rust-owned memory.
+    let suggested = unsafe { libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) };
+    let initial = usize::try_from(suggested)
+        .unwrap_or(16 * 1024)
+        .clamp(1024, MAX_ACCOUNT_LOOKUP_BYTES);
+    let mut buffer = vec![0_u8; initial];
+
+    loop {
+        let mut entry = MaybeUninit::<libc::passwd>::uninit();
+        let mut result = ptr::null_mut();
+        // SAFETY: entry and result are valid output storage, and buffer is
+        // writable for its reported length. No pointer escapes this loop.
+        let status = unsafe {
+            libc::getpwuid_r(
+                uid,
+                entry.as_mut_ptr(),
+                buffer.as_mut_ptr().cast(),
+                buffer.len(),
+                &raw mut result,
+            )
+        };
+        if status == libc::ERANGE {
+            let next = buffer
+                .len()
+                .checked_mul(2)
+                .filter(|next| *next <= MAX_ACCOUNT_LOOKUP_BYTES)
+                .ok_or_else(|| io::Error::other("account lookup buffer is too large"))?;
+            buffer.resize(next, 0);
+            continue;
+        }
+        if status != 0 {
+            return Err(io::Error::from_raw_os_error(status));
+        }
+        if result.is_null() {
+            return Err(io::Error::other("D-Bus caller UID has no local account"));
+        }
+
+        // SAFETY: a non-null result from a successful getpwuid_r call means
+        // that entry was initialized and its pointers refer into buffer.
+        let entry = unsafe { entry.assume_init() };
+        let primary_gid = libc::c_int::try_from(entry.pw_gid)
+            .map_err(|_| io::Error::other("account primary group is out of range"))?;
+        let mut group_count = 16;
+        let mut groups = vec![0; usize::try_from(group_count).unwrap_or(16)];
+        loop {
+            // SAFETY: pw_name remains valid because buffer is not changed,
+            // groups is writable for group_count entries, and getgrouplist
+            // updates group_count when more storage is required.
+            let status = unsafe {
+                libc::getgrouplist(
+                    entry.pw_name,
+                    primary_gid,
+                    groups.as_mut_ptr(),
+                    &raw mut group_count,
+                )
+            };
+            if status >= 0 {
+                let count = usize::try_from(group_count)
+                    .map_err(|_| io::Error::other("account group count is invalid"))?;
+                groups.truncate(count);
+                let groups = groups
+                    .into_iter()
+                    .map(|group| {
+                        u32::try_from(group)
+                            .map_err(|_| io::Error::other("account group ID is out of range"))
+                    })
+                    .collect::<io::Result<Vec<_>>>()?;
+                return Ok(ProcessSnapshot {
+                    start_time: 0,
+                    groups,
+                });
+            }
+
+            let count = usize::try_from(group_count)
+                .ok()
+                .filter(|count| *count > groups.len() && *count <= MAX_GROUPS)
+                .ok_or_else(|| io::Error::other("account group count is invalid"))?;
+            groups.resize(count, 0);
+        }
+    }
+}
+
+#[cfg(any(test, not(target_os = "macos")))]
 fn process_start_time(stat: &str) -> io::Result<u64> {
     let after_name = stat
         .rfind(')')
@@ -80,6 +186,7 @@ fn process_start_time(stat: &str) -> io::Result<u64> {
         .map_err(|error| io::Error::other(format!("invalid process start time: {error}")))
 }
 
+#[cfg(any(test, not(target_os = "macos")))]
 fn parse_status(status: &str) -> io::Result<(u32, u32, Vec<u32>)> {
     let effective_uid = status_field(status, "Uid:", 1, "effective UID")?;
     let primary_gid = status_field(status, "Gid:", 1, "effective GID")?;
@@ -98,6 +205,7 @@ fn parse_status(status: &str) -> io::Result<(u32, u32, Vec<u32>)> {
     Ok((effective_uid, primary_gid, groups))
 }
 
+#[cfg(any(test, not(target_os = "macos")))]
 fn status_field(status: &str, name: &str, index: usize, description: &str) -> io::Result<u32> {
     status
         .lines()

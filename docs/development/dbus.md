@@ -15,6 +15,13 @@ policy to every operation. Read-only inspection still requires the applicable
 daemon permission. Mutating and administrative methods also require the
 bridge's local authorization check.
 
+On Linux, the bridge binds the bus credentials to a process snapshot from
+procfs before checking its groups or constructing a Polkit process subject. On
+macOS, where the bus provides an authenticated UID but no process ID, it
+resolves that UID through the native account database. Group authorization and
+daemon attestation are available there, but Polkit authorization fails closed
+because a process-bound subject cannot be constructed safely.
+
 ## Discovery and interface versions
 
 The root implements `org.freedesktop.DBus.ObjectManager`,
