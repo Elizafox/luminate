@@ -3,6 +3,8 @@
 
 //! Deterministic one-request daemon fixture for HTTP boundary tests.
 
+#[cfg(windows)]
+use std::process;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 #[cfg(windows)]
@@ -64,7 +66,7 @@ pub(crate) fn scripted(connections: Vec<Vec<ResponseStatus>>) -> MockDaemon {
     #[cfg(windows)]
     let instance = NEXT_MOCK_DAEMON_ID.fetch_add(1, Ordering::Relaxed);
     #[cfg(windows)]
-    let path = directory.join(format!("luminated-{}-{instance}.sock", std::process::id()));
+    let path = directory.join(format!("luminated-{}-{instance}.sock", process::id()));
     #[cfg(not(windows))]
     let path = directory.join("luminated.sock");
 
