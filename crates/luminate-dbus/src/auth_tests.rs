@@ -21,6 +21,21 @@ fn group_authorization_precedes_optional_polkit() {
     assert_eq!(Decision::decide(&[10, 1000], 42, false), Decision::Deny);
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+#[allow(
+    unsafe_code,
+    reason = "getgid() takes no arguments, touches no memory, and cannot fail; the test compares the account lookup with the calling process's real primary group"
+)]
+fn account_snapshot_includes_primary_gid() {
+    use luminate_platform::identity::daemon_own_uid;
+    let snapshot = account_snapshot(daemon_own_uid()).expect("read caller account snapshot");
+    // SAFETY: getgid() takes no arguments, touches no memory, and cannot fail.
+    let primary_gid = unsafe { libc::getgid() };
+
+    assert!(snapshot.groups.contains(&primary_gid));
+}
+
 #[test]
 fn process_snapshot_includes_primary_gid() {
     let proc_root = TestDir::new("dbus-proc");

@@ -145,7 +145,12 @@ pub(crate) fn account_snapshot(uid: u32) -> io::Result<ProcessSnapshot> {
                 &raw mut group_capacity,
             )
         };
-        let count = usize::try_from(status)
+        if status < 0 {
+            return Err(io::Error::other(
+                "account group count exceeds the supported limit",
+            ));
+        }
+        let count = usize::try_from(group_capacity)
             .ok()
             .filter(|count| *count <= groups.len())
             .ok_or_else(|| io::Error::other("account group count is invalid"))?;
