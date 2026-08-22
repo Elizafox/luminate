@@ -132,43 +132,35 @@ pub(crate) fn account_snapshot(uid: u32) -> io::Result<ProcessSnapshot> {
         let entry = unsafe { entry.assume_init() };
         let primary_gid = libc::c_int::try_from(entry.pw_gid)
             .map_err(|_| io::Error::other("account primary group is out of range"))?;
-        let mut group_count = 16;
-        let mut groups = vec![0; usize::try_from(group_count).unwrap_or(16)];
-        loop {
-            // SAFETY: pw_name remains valid because buffer is not changed,
-            // groups is writable for group_count entries, and getgrouplist
-            // updates group_count when more storage is required.
-            let status = unsafe {
-                libc::getgrouplist(
-                    entry.pw_name,
-                    primary_gid,
-                    groups.as_mut_ptr(),
-                    &raw mut group_count,
-                )
-            };
-            if status >= 0 {
-                let count = usize::try_from(group_count)
-                    .map_err(|_| io::Error::other("account group count is invalid"))?;
-                groups.truncate(count);
-                let groups = groups
-                    .into_iter()
-                    .map(|group| {
-                        u32::try_from(group)
-                            .map_err(|_| io::Error::other("account group ID is out of range"))
-                    })
-                    .collect::<io::Result<Vec<_>>>()?;
-                return Ok(ProcessSnapshot {
-                    start_time: 0,
-                    groups,
-                });
-            }
-
-            let count = usize::try_from(group_count)
-                .ok()
-                .filter(|count| *count > groups.len() && *count <= MAX_GROUPS)
-                .ok_or_else(|| io::Error::other("account group count is invalid"))?;
-            groups.resize(count, 0);
-        }
+        let mut group_capacity = libc::c_int::try_from(MAX_GROUPS)
+            .map_err(|_| io::Error::other("maximum account group count is invalid"))?;
+        let mut groups = vec![0; MAX_GROUPS];
+        // SAFETY: pw_name remains valid because buffer is not changed, and
+        // groups is writable for group_capacity entries.
+        let status = unsafe {
+            libc::getgrouplist(
+                entry.pw_name,
+                primary_gid,
+                groups.as_mut_ptr(),
+                &raw mut group_capacity,
+            )
+        };
+        let count = usize::try_from(status)
+            .ok()
+            .filter(|count| *count <= groups.len())
+            .ok_or_else(|| io::Error::other("account group count is invalid"))?;
+        groups.truncate(count);
+        let groups = groups
+            .into_iter()
+            .map(|group| {
+                u32::try_from(group)
+                    .map_err(|_| io::Error::other("account group ID is out of range"))
+            })
+            .collect::<io::Result<Vec<_>>>()?;
+        return Ok(ProcessSnapshot {
+            start_time: 0,
+            groups,
+        });
     }
 }
 

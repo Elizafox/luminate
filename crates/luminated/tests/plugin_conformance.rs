@@ -1081,7 +1081,10 @@ impl Drop for MockWled {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
         if let Some(thread) = self.thread.take() {
-            thread.join().expect("mock WLED thread");
+            let result = thread.join();
+            if !thread::panicking() {
+                result.expect("mock WLED thread");
+            }
         }
     }
 }
@@ -1093,7 +1096,18 @@ fn serve_wled_request(mut stream: TcpStream, requests: &Mutex<Vec<String>>) {
     let mut request = Vec::new();
     while !request.windows(4).any(|window| window == b"\r\n\r\n") {
         let mut chunk = [0_u8; 512];
-        let length = stream.read(&mut chunk).expect("read mock WLED request");
+        let length = match stream.read(&mut chunk) {
+            Ok(length) => length,
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    ErrorKind::ConnectionAborted | ErrorKind::ConnectionReset
+                ) =>
+            {
+                return;
+            }
+            Err(error) => panic!("read mock WLED request: {error}"),
+        };
         if length == 0 {
             return;
         }
@@ -1123,12 +1137,19 @@ fn serve_wled_request(mut stream: TcpStream, requests: &Mutex<Vec<String>>) {
         ("POST", "/json/state") => "{}",
         _ => panic!("unexpected mock WLED request: {request_line}"),
     };
-    write!(
+    let result = write!(
         stream,
         "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{response}",
         response.len()
-    )
-    .expect("write mock WLED response");
+    );
+    if let Err(error) = result
+        && !matches!(
+            error.kind(),
+            ErrorKind::BrokenPipe | ErrorKind::ConnectionAborted | ErrorKind::ConnectionReset
+        )
+    {
+        panic!("write mock WLED response: {error}");
+    }
 }
 
 const LIFX_HEADER_LEN: usize = 36;
