@@ -21,6 +21,11 @@ host or `host:port` without a path. At most 256 entries may be configured. Set
 `endpoints = []` to use mDNS discovery only, or also set `mdns = false` to
 disable all discovery.
 
+mDNS discovery accepts SRV records for instances beneath `_wled._tcp.local`
+and rejects target names that extend beyond the record's declared data length.
+Compressed targets remain supported. Advertised addresses must match the
+response sender's address.
+
 `physical_tags` is an optional open list of presentation hints applied to each
 WLED `segments` surface. WLED does not generally identify how a controller is
 mounted, so configure tags such as `shape:cylinder` or

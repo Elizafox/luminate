@@ -136,8 +136,9 @@ fn parse_response(packet: &[u8], source: IpAddr) -> Vec<SocketAddr> {
     }
 
     let mut output = HashSet::new();
+    let service_suffix = format!(".{SERVICE}");
     for record in &parsed {
-        if record.kind != 33 || !record.name.ends_with(SERVICE) || record.data_length < 7 {
+        if record.kind != 33 || !record.name.ends_with(&service_suffix) || record.data_length < 7 {
             continue;
         }
         let data = &packet[record.data_offset..record.data_offset + record.data_length];
@@ -146,6 +147,11 @@ fn parse_response(packet: &[u8], source: IpAddr) -> Vec<SocketAddr> {
         let Some(target) = read_name(packet, &mut target_offset) else {
             continue;
         };
+        // A compression pointer may reference the rest of the packet, but
+        // the encoded target itself must remain inside this SRV record.
+        if target_offset > record.data_offset + record.data_length {
+            continue;
+        }
         if let Some(target_addresses) = addresses.get(&target.to_ascii_lowercase()) {
             output.extend(
                 target_addresses

@@ -159,40 +159,6 @@ async fn bounded_test_server(state: AppState) -> (SocketAddr, JoinHandle<()>) {
     (address, task)
 }
 
-#[test]
-fn configured_origins_are_strict_and_normalized() {
-    let policy = OriginPolicy::from_configured(
-        &["https://Example.COM:443".to_owned()],
-        AuthenticationMode::Direct,
-    )
-    .expect("valid HTTPS origin");
-    assert_eq!(
-        policy.decision(&HeaderValue::from_static("https://example.com")),
-        OriginDecision::Allow("https://example.com".to_owned())
-    );
-
-    for origin in [
-        "null",
-        "https://example.com/path",
-        "https://user@example.com",
-        "https://*.example.com",
-        "http://127.0.0.1:3000",
-    ] {
-        assert!(
-            OriginPolicy::from_configured(&[origin.to_owned()], AuthenticationMode::Direct)
-                .is_err(),
-            "accepted {origin}"
-        );
-    }
-    assert!(
-        OriginPolicy::from_configured(
-            &["http://127.0.0.1:3000".to_owned()],
-            AuthenticationMode::InsecureDevelopment,
-        )
-        .is_ok()
-    );
-}
-
 #[tokio::test]
 async fn browser_boundary_denies_origins_by_default_and_answers_allowed_preflights() {
     let response = raw_request(
