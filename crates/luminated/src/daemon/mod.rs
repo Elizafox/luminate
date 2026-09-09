@@ -266,18 +266,6 @@ impl RunContext {
         })
     }
 
-    /// Builds a context driven by an external lifecycle controller.
-    #[allow(dead_code, reason = "A focused constructor used by lifecycle tests.")]
-    pub(crate) fn requested(shutdown: mpsc::Receiver<()>) -> Self {
-        Self {
-            shutdown: ShutdownSource::Requested(shutdown),
-            lifecycle: LifecycleReporter::discarding(),
-            listener_access: ListenerAccess::OwnerOnly,
-            operator_events: false,
-            power_events: PowerEventSource::Platform,
-        }
-    }
-
     #[allow(
         dead_code,
         reason = "A focused constructor used by lifecycle tests; production SCM contexts use `service`."

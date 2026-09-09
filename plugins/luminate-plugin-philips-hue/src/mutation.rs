@@ -282,7 +282,7 @@ mod tests {
                 .borrow_mut()
                 .push((path.to_owned(), body.to_vec()));
             self.response
-                .borrow_mut()
+                .borrow()
                 .as_ref()
                 .map(Clone::clone)
                 .map_err(|error| HttpError::Protocol(error.to_string()))

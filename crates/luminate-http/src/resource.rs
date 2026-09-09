@@ -41,6 +41,12 @@ pub(crate) struct Rate {
     pub(crate) burst: u32,
 }
 
+impl Rate {
+    fn capacity(self) -> u64 {
+        u64::from(self.per_minute.saturating_add(self.burst)).saturating_mul(60_000)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct HttpLimits {
     pub(crate) maximum_header_bytes: usize,
@@ -129,6 +135,18 @@ struct Window {
     sequence: u64,
 }
 
+impl Window {
+    fn refill(&mut self, rate: Rate, now: Instant) {
+        let elapsed =
+            u64::try_from(now.duration_since(self.updated).as_millis()).unwrap_or(u64::MAX);
+        self.token_millis = self
+            .token_millis
+            .saturating_add(elapsed.saturating_mul(u64::from(rate.per_minute)))
+            .min(rate.capacity());
+        self.updated = now;
+    }
+}
+
 pub(crate) struct RateStore<K> {
     rate: Rate,
     maximum_entries: usize,
@@ -160,18 +178,13 @@ where
     }
 
     pub(crate) async fn available(&self, key: K) -> bool {
-        let now = Instant::now();
+        self.available_at(key, Instant::now()).await
+    }
+
+    async fn available_at(&self, key: K, now: Instant) -> bool {
         let mut store = self.inner.lock().await;
-        let capacity =
-            u64::from(self.rate.per_minute.saturating_add(self.rate.burst)).saturating_mul(60_000);
         store.entries.get_mut(&key).is_none_or(|window| {
-            let elapsed =
-                u64::try_from(now.duration_since(window.updated).as_millis()).unwrap_or(u64::MAX);
-            window.token_millis = window
-                .token_millis
-                .saturating_add(elapsed.saturating_mul(u64::from(self.rate.per_minute)))
-                .min(capacity);
-            window.updated = now;
+            window.refill(self.rate, now);
             window.token_millis >= 60_000
         })
     }
@@ -191,22 +204,14 @@ where
         {
             store.entries.remove(&oldest);
         }
-        let capacity =
-            u64::from(self.rate.per_minute.saturating_add(self.rate.burst)).saturating_mul(60_000);
         let sequence = store.next_sequence;
         store.next_sequence = store.next_sequence.wrapping_add(1);
         let window = store.entries.entry(key).or_insert(Window {
             updated: now,
-            token_millis: capacity,
+            token_millis: self.rate.capacity(),
             sequence,
         });
-        let elapsed =
-            u64::try_from(now.duration_since(window.updated).as_millis()).unwrap_or(u64::MAX);
-        window.token_millis = window
-            .token_millis
-            .saturating_add(elapsed.saturating_mul(u64::from(self.rate.per_minute)))
-            .min(capacity);
-        window.updated = now;
+        window.refill(self.rate, now);
         window.sequence = sequence;
         if window.token_millis < 60_000 {
             return false;
@@ -224,6 +229,69 @@ pub(crate) fn credential_digest(bytes: &[u8]) -> [u8; 32] {
 mod tests {
     use super::{Rate, RateStore};
     use std::time::{Duration, Instant};
+
+    #[tokio::test]
+    async fn availability_refills_without_consuming_tokens() {
+        let store = RateStore::new(
+            Rate {
+                per_minute: 2,
+                burst: 1,
+            },
+            2,
+        );
+        let now = Instant::now();
+        assert!(store.available_at("a", now).await);
+        for _ in 0..3 {
+            assert!(store.allow_at("a", now).await);
+        }
+        assert!(!store.allow_at("a", now).await);
+        assert!(!store.available_at("a", now).await);
+
+        let halfway = now + Duration::from_secs(15);
+        assert!(!store.available_at("a", halfway).await);
+        assert!(!store.allow_at("a", halfway).await);
+
+        let refilled = now + Duration::from_secs(30);
+        assert!(store.available_at("a", refilled).await);
+        assert!(store.available_at("a", refilled).await);
+        assert!(store.allow_at("a", refilled).await);
+        assert!(!store.allow_at("a", refilled).await);
+    }
+
+    #[tokio::test]
+    async fn refill_is_capped_at_capacity() {
+        let store = RateStore::new(
+            Rate {
+                per_minute: 2,
+                burst: 1,
+            },
+            2,
+        );
+        let now = Instant::now();
+        assert!(store.allow_at("a", now).await);
+        let later = now + Duration::from_secs(59);
+        assert!(store.available_at("a", later).await);
+        for _ in 0..3 {
+            assert!(store.allow_at("a", later).await);
+        }
+        assert!(!store.allow_at("a", later).await);
+    }
+
+    #[tokio::test]
+    async fn zero_rate_does_not_refill_a_consumed_burst() {
+        let store = RateStore::new(
+            Rate {
+                per_minute: 0,
+                burst: 1,
+            },
+            2,
+        );
+        let now = Instant::now();
+        assert!(store.allow_at("a", now).await);
+        let later = now + Duration::from_secs(59);
+        assert!(!store.available_at("a", later).await);
+        assert!(!store.allow_at("a", later).await);
+    }
 
     #[tokio::test]
     async fn bounded_store_evicts_the_oldest_entry_deterministically() {
